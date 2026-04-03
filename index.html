@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Content Creator Pro</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Great+Vibes&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -13,6 +13,7 @@
   --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
   --success: #22c55e; --warning: #f59e0b; --danger: #ef4444;
   --radius: 10px;
+  --gold: #d4a647;
 }
 body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow: hidden; }
 
@@ -90,6 +91,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 .timeline-slide img { width: 100%; height: 100%; object-fit: cover; }
 .timeline-slide .slide-duration { position: absolute; bottom: 1px; right: 3px; font-size: 9px; background: rgba(0,0,0,0.7); padding: 1px 4px; border-radius: 3px; color: white; }
 .timeline-slide .slide-num { position: absolute; top: 1px; left: 3px; font-size: 9px; background: var(--accent); padding: 0px 4px; border-radius: 3px; color: white; font-weight: 600; }
+.timeline-slide .slide-fx { position: absolute; top: 1px; right: 3px; font-size: 8px; background: rgba(212,166,71,0.8); padding: 0px 3px; border-radius: 3px; color: white; font-weight: 600; }
 .timeline-trans { flex-shrink: 0; color: var(--text3); font-size: 10px; padding: 0 2px; }
 .timeline-add { flex-shrink: 0; width: 55px; height: 55px; border: 2px dashed var(--bg4); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text3); font-size: 20px; }
 .timeline-add:hover { border-color: var(--accent); color: var(--accent); }
@@ -109,6 +111,12 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 .export-option .export-size { font-size: 9px; color: var(--text3); }
 .progress-bar { height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; margin: 12px 0; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #8b5cf6); border-radius: 3px; transition: width 0.3s; width: 0%; }
+
+/* Intensity labels */
+.intensity-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text3); margin-top: -4px; }
+.custom-color-row { display: none; margin-top: 4px; }
+.custom-color-row.visible { display: block; }
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
@@ -195,7 +203,41 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
           <option value="brand">🎨 Brand Color</option>
           <option value="warm-grad">🌅 Warm Gradient</option>
           <option value="light">⬜ Clean White</option>
+          <option value="brown-gold">🟤 Dark Brown/Gold</option>
+          <option value="blue-purple">🔵 Deep Blue/Purple</option>
+          <option value="red-crimson">🔴 Dark Red/Crimson</option>
+          <option value="forest-green">🟢 Forest Green</option>
+          <option value="custom">🎨 Custom Color</option>
         </select>
+      </div>
+      <div class="custom-color-row" id="customColorRow">
+        <div class="form-row">
+          <div class="form-group"><label>Color 1</label><input type="color" id="customBgColor1" value="#1a0f00" onchange="saveSlideCustomColors();drawCurrent()" style="height:28px;padding:2px"></div>
+          <div class="form-group"><label>Color 2</label><input type="color" id="customBgColor2" value="#0a0500" onchange="saveSlideCustomColors();drawCurrent()" style="height:28px;padding:2px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>✨ Effects</h3>
+      <div class="form-group"><label>Effect Type</label>
+        <select id="effectType" onchange="saveSlideEffect();drawCurrent()">
+          <option value="none">None</option>
+          <option value="gold-sparkles">✨ Gold Sparkles</option>
+          <option value="fire-embers">🔥 Fire Embers</option>
+          <option value="neon-glow">💡 Neon Glow</option>
+          <option value="snow-frost">❄️ Snow / Frost</option>
+          <option value="smoke-fog">🌫️ Smoke / Fog</option>
+          <option value="divine-light">🌟 Divine Light</option>
+          <option value="matrix-rain">💚 Matrix Rain</option>
+          <option value="electric">⚡ Electric / Lightning</option>
+          <option value="rainbow-shimmer">🌈 Rainbow Shimmer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Intensity</label>
+        <input type="range" id="effectIntensity" min="0" max="100" value="50" oninput="saveSlideEffect();drawCurrent()">
+        <div class="intensity-labels"><span>Subtle</span><span>Medium</span><span>Intense</span></div>
       </div>
     </div>
 
@@ -218,6 +260,16 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
       <h3>✏️ Text Overlay</h3>
       <div class="form-group"><label>Headline</label><input type="text" id="headline" placeholder="Your headline..." oninput="saveSlideText();drawCurrent()"></div>
       <div class="form-group"><label>Subtitle / CTA</label><input type="text" id="subtitle" placeholder="Call to action..." oninput="saveSlideText();drawCurrent()"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Font</label>
+          <select id="fontFamily" onchange="saveSlideFont();drawCurrent()">
+            <option value="Inter">Modern Sans (Inter)</option>
+            <option value="Playfair Display">Elegant Serif (Playfair)</option>
+            <option value="Great Vibes">Script (Great Vibes)</option>
+            <option value="Oswald">Bold Impact (Oswald)</option>
+          </select>
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group"><label>Size</label>
           <select id="fontSize" onchange="drawCurrent()"><option value="24">S</option><option value="32" selected>M</option><option value="44">L</option><option value="56">XL</option></select>
@@ -303,6 +355,383 @@ const TEMPLATES = {
   quote: { hl:'"Amazing quality and service!"', sub:'— Happy Customer', pos:'center', bg:'dark', fs:'32', bgo:'0' },
 };
 
+// Font map for canvas rendering
+const FONTS = {
+  'Inter': "'Inter', sans-serif",
+  'Playfair Display': "'Playfair Display', serif",
+  'Great Vibes': "'Great Vibes', cursive",
+  'Oswald': "'Oswald', sans-serif"
+};
+
+// ===== PARTICLE SYSTEM =====
+// Each slide gets its own particle cache so static preview shows consistent particles
+const particleCaches = new Map(); // slideIndex -> { particles, effect, intensity, w, h }
+
+function createParticles(effect, intensity, w, h, count) {
+  const particles = [];
+  const n = Math.floor(count * intensity);
+  for (let i = 0; i < n; i++) {
+    particles.push(initParticle(effect, w, h));
+  }
+  return particles;
+}
+
+function initParticle(effect, w, h) {
+  const p = { x: Math.random() * w, y: Math.random() * h, life: Math.random() };
+  switch (effect) {
+    case 'gold-sparkles':
+      p.size = 1.5 + Math.random() * 3;
+      p.vx = (Math.random() - 0.5) * 0.5;
+      p.vy = -(0.3 + Math.random() * 1.2);
+      p.alpha = 0.3 + Math.random() * 0.7;
+      p.twinkle = Math.random() * Math.PI * 2;
+      p.hue = 40 + Math.random() * 20; // gold range
+      break;
+    case 'fire-embers':
+      p.size = 1 + Math.random() * 3;
+      p.vx = (Math.random() - 0.5) * 0.8;
+      p.vy = -(0.5 + Math.random() * 1.5);
+      p.alpha = 0.4 + Math.random() * 0.6;
+      p.hue = Math.random() < 0.6 ? 20 + Math.random() * 20 : 0 + Math.random() * 15; // orange/red
+      p.glow = 3 + Math.random() * 8;
+      break;
+    case 'snow-frost':
+      p.size = 1 + Math.random() * 3;
+      p.vx = (Math.random() - 0.5) * 0.4;
+      p.vy = 0.3 + Math.random() * 1;
+      p.alpha = 0.3 + Math.random() * 0.5;
+      p.wobble = Math.random() * Math.PI * 2;
+      break;
+    case 'smoke-fog':
+      p.size = 30 + Math.random() * 60;
+      p.vx = (Math.random() - 0.5) * 0.3;
+      p.vy = -(0.1 + Math.random() * 0.3);
+      p.alpha = 0.03 + Math.random() * 0.08;
+      p.y = h * 0.5 + Math.random() * h * 0.5; // start from bottom half
+      break;
+    case 'divine-light':
+      p.angle = Math.random() * Math.PI * 2;
+      p.dist = Math.random() * Math.max(w, h) * 0.6;
+      p.size = 1 + Math.random() * 2;
+      p.alpha = 0.1 + Math.random() * 0.3;
+      p.speed = 0.002 + Math.random() * 0.005;
+      p.rayAlpha = 0.02 + Math.random() * 0.06;
+      break;
+    case 'matrix-rain':
+      p.x = Math.floor(Math.random() * (w / 14)) * 14;
+      p.y = Math.random() * h;
+      p.vy = 1 + Math.random() * 3;
+      p.alpha = 0.3 + Math.random() * 0.7;
+      p.char = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
+      p.size = 10 + Math.random() * 4;
+      break;
+    case 'electric':
+      p.x = Math.random() * w;
+      p.y = Math.random() * h;
+      p.size = 1 + Math.random() * 2;
+      p.alpha = 0;
+      p.flashTimer = Math.random() * 60;
+      p.flashDuration = 3 + Math.random() * 8;
+      p.vx = (Math.random() - 0.5) * 2;
+      p.vy = (Math.random() - 0.5) * 2;
+      break;
+    default:
+      p.size = 2; p.vx = 0; p.vy = 0; p.alpha = 0.5;
+  }
+  return p;
+}
+
+function getParticleCount(effect) {
+  switch (effect) {
+    case 'gold-sparkles': return 120;
+    case 'fire-embers': return 80;
+    case 'snow-frost': return 100;
+    case 'smoke-fog': return 20;
+    case 'divine-light': return 60;
+    case 'matrix-rain': return 80;
+    case 'electric': return 50;
+    default: return 0;
+  }
+}
+
+function updateParticle(p, effect, w, h) {
+  switch (effect) {
+    case 'gold-sparkles':
+      p.x += p.vx;
+      p.y += p.vy;
+      p.twinkle += 0.08;
+      p.alpha = (0.3 + Math.sin(p.twinkle) * 0.35);
+      if (p.y < -10 || p.x < -10 || p.x > w + 10) {
+        p.x = Math.random() * w; p.y = h + 5;
+        p.alpha = 0.3 + Math.random() * 0.7;
+      }
+      break;
+    case 'fire-embers':
+      p.x += p.vx + Math.sin(p.life * 10) * 0.3;
+      p.y += p.vy;
+      p.life += 0.005;
+      p.alpha *= 0.998;
+      if (p.y < -10 || p.alpha < 0.05) {
+        p.x = Math.random() * w; p.y = h + 5;
+        p.alpha = 0.4 + Math.random() * 0.6;
+        p.life = Math.random();
+      }
+      break;
+    case 'snow-frost':
+      p.wobble += 0.02;
+      p.x += p.vx + Math.sin(p.wobble) * 0.3;
+      p.y += p.vy;
+      if (p.y > h + 10) { p.y = -5; p.x = Math.random() * w; }
+      break;
+    case 'smoke-fog':
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life += 0.002;
+      if (p.y < h * 0.2 || p.life > 1) {
+        p.x = Math.random() * w;
+        p.y = h * 0.7 + Math.random() * h * 0.3;
+        p.life = Math.random() * 0.3;
+      }
+      break;
+    case 'divine-light':
+      p.angle += p.speed;
+      p.dist += Math.sin(p.life * 5) * 0.5;
+      p.life += 0.01;
+      break;
+    case 'matrix-rain':
+      p.y += p.vy;
+      if (Math.random() < 0.05) p.char = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
+      if (p.y > h + 10) { p.y = -14; }
+      break;
+    case 'electric':
+      p.flashTimer--;
+      if (p.flashTimer <= 0) {
+        p.alpha = 0.6 + Math.random() * 0.4;
+        p.flashTimer = 20 + Math.random() * 80;
+        p.x = Math.random() * w;
+        p.y = Math.random() * h;
+      } else if (p.flashTimer > p.flashDuration) {
+        p.alpha = 0;
+      } else {
+        p.alpha *= 0.85;
+        p.x += p.vx * 2;
+        p.y += p.vy * 2;
+      }
+      break;
+  }
+}
+
+function drawParticles(c, particles, effect, intensity, w, h) {
+  if (!particles || !particles.length) return;
+  c.save();
+  const intMult = 0.3 + intensity * 0.7;
+
+  switch (effect) {
+    case 'gold-sparkles':
+      particles.forEach(p => {
+        const a = p.alpha * intMult;
+        c.beginPath();
+        c.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        c.fillStyle = `hsla(${p.hue}, 80%, 60%, ${a})`;
+        c.shadowColor = `hsla(${p.hue}, 90%, 50%, ${a * 0.8})`;
+        c.shadowBlur = p.size * 3;
+        c.fill();
+        // cross sparkle
+        if (p.size > 2.5) {
+          c.strokeStyle = `hsla(${p.hue}, 90%, 75%, ${a * 0.5})`;
+          c.lineWidth = 0.5;
+          c.beginPath(); c.moveTo(p.x - p.size * 2, p.y); c.lineTo(p.x + p.size * 2, p.y); c.stroke();
+          c.beginPath(); c.moveTo(p.x, p.y - p.size * 2); c.lineTo(p.x, p.y + p.size * 2); c.stroke();
+        }
+      });
+      break;
+
+    case 'fire-embers':
+      particles.forEach(p => {
+        const a = p.alpha * intMult;
+        c.beginPath();
+        c.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        c.fillStyle = `hsla(${p.hue}, 100%, 55%, ${a})`;
+        c.shadowColor = `hsla(${p.hue}, 100%, 50%, ${a})`;
+        c.shadowBlur = p.glow * intMult;
+        c.fill();
+      });
+      break;
+
+    case 'snow-frost':
+      c.shadowColor = 'rgba(200,220,255,0.3)';
+      c.shadowBlur = 4;
+      particles.forEach(p => {
+        const a = p.alpha * intMult;
+        c.beginPath();
+        c.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        c.fillStyle = `rgba(230,240,255,${a})`;
+        c.fill();
+      });
+      break;
+
+    case 'smoke-fog':
+      c.shadowBlur = 0;
+      particles.forEach(p => {
+        const a = p.alpha * intMult;
+        const grad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+        grad.addColorStop(0, `rgba(180,180,200,${a})`);
+        grad.addColorStop(1, `rgba(180,180,200,0)`);
+        c.fillStyle = grad;
+        c.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+      });
+      break;
+
+    case 'divine-light':
+      // Golden rays from center
+      const cx = w / 2, cy = h / 2;
+      particles.forEach(p => {
+        const a = p.rayAlpha * intMult;
+        const x1 = cx, y1 = cy;
+        const x2 = cx + Math.cos(p.angle) * Math.max(w, h);
+        const y2 = cy + Math.sin(p.angle) * Math.max(w, h);
+        const grad = c.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, `rgba(212,166,71,${a * 1.5})`);
+        grad.addColorStop(0.3, `rgba(212,166,71,${a})`);
+        grad.addColorStop(1, `rgba(212,166,71,0)`);
+        c.strokeStyle = grad;
+        c.lineWidth = 1.5 + p.size;
+        c.globalAlpha = a * 2;
+        c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+      });
+      // Center glow
+      c.globalAlpha = 0.15 * intMult;
+      const cg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.4);
+      cg.addColorStop(0, 'rgba(255,220,120,1)');
+      cg.addColorStop(0.5, 'rgba(212,166,71,0.3)');
+      cg.addColorStop(1, 'rgba(212,166,71,0)');
+      c.fillStyle = cg;
+      c.fillRect(0, 0, w, h);
+      break;
+
+    case 'matrix-rain':
+      c.shadowBlur = 0;
+      c.font = '13px monospace';
+      particles.forEach(p => {
+        const a = p.alpha * intMult;
+        c.fillStyle = `rgba(0,255,70,${a})`;
+        c.shadowColor = `rgba(0,255,70,${a * 0.5})`;
+        c.shadowBlur = 4;
+        c.fillText(p.char, p.x, p.y);
+      });
+      break;
+
+    case 'electric':
+      particles.forEach(p => {
+        if (p.alpha < 0.05) return;
+        const a = p.alpha * intMult;
+        c.beginPath();
+        c.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        c.fillStyle = `rgba(100,180,255,${a})`;
+        c.shadowColor = `rgba(80,160,255,${a})`;
+        c.shadowBlur = 15;
+        c.fill();
+        // spark lines
+        if (a > 0.3) {
+          c.strokeStyle = `rgba(150,200,255,${a * 0.6})`;
+          c.lineWidth = 0.5;
+          for (let j = 0; j < 3; j++) {
+            const angle = Math.random() * Math.PI * 2;
+            const len = 5 + Math.random() * 15;
+            c.beginPath();
+            c.moveTo(p.x, p.y);
+            const mx = p.x + Math.cos(angle) * len * 0.5 + (Math.random() - 0.5) * 8;
+            const my = p.y + Math.sin(angle) * len * 0.5 + (Math.random() - 0.5) * 8;
+            c.lineTo(mx, my);
+            c.lineTo(p.x + Math.cos(angle) * len, p.y + Math.sin(angle) * len);
+            c.stroke();
+          }
+        }
+      });
+      break;
+  }
+  c.shadowBlur = 0;
+  c.globalAlpha = 1;
+  c.restore();
+}
+
+// Text-based effects drawn over text (neon glow, rainbow shimmer)
+function drawTextEffect(c, effect, intensity, textInfo, time) {
+  if (!textInfo) return;
+  const intMult = 0.3 + intensity * 0.7;
+  const { hl, sub, hlX, hlY, subX, subY, hlFont, subFont, w, maxW } = textInfo;
+
+  if (effect === 'neon-glow') {
+    const pulse = 0.5 + Math.sin(time * 3) * 0.3;
+    const glowStr = 8 + pulse * 12 * intMult;
+    c.save();
+    c.textAlign = 'center';
+    if (hl) {
+      c.font = hlFont;
+      c.shadowColor = `rgba(0,255,200,${0.6 * intMult * pulse})`;
+      c.shadowBlur = glowStr;
+      c.fillStyle = `rgba(200,255,240,${0.9})`;
+      c.fillText(hl, hlX, hlY, maxW);
+      // double pass for stronger glow
+      c.shadowBlur = glowStr * 1.5;
+      c.fillText(hl, hlX, hlY, maxW);
+    }
+    if (sub) {
+      c.font = subFont;
+      c.shadowColor = `rgba(0,255,200,${0.4 * intMult * pulse})`;
+      c.shadowBlur = glowStr * 0.7;
+      c.fillStyle = `rgba(200,255,240,${0.8})`;
+      c.fillText(sub, subX, subY, maxW);
+    }
+    c.restore();
+  }
+
+  if (effect === 'rainbow-shimmer') {
+    c.save();
+    c.textAlign = 'center';
+    const shift = time * 60;
+    if (hl) {
+      c.font = hlFont;
+      // Create gradient that shifts over time
+      const grad = c.createLinearGradient(hlX - w * 0.4, 0, hlX + w * 0.4, 0);
+      const colors = ['#ff0000','#ff8800','#ffff00','#00ff00','#0088ff','#8800ff','#ff0088','#ff0000'];
+      colors.forEach((col, i) => {
+        const stop = ((i / (colors.length - 1)) + shift / w) % 1;
+        grad.addColorStop(Math.max(0, Math.min(1, stop)), col);
+      });
+      c.fillStyle = grad;
+      c.globalAlpha = 0.4 + intMult * 0.6;
+      c.fillText(hl, hlX, hlY, maxW);
+    }
+    if (sub) {
+      c.font = subFont;
+      const grad2 = c.createLinearGradient(subX - w * 0.4, 0, subX + w * 0.4, 0);
+      const colors2 = ['#ff0088','#ff0000','#ff8800','#ffff00','#00ff00','#0088ff','#8800ff','#ff0088'];
+      colors2.forEach((col, i) => {
+        const stop = ((i / (colors2.length - 1)) + shift / w) % 1;
+        grad2.addColorStop(Math.max(0, Math.min(1, stop)), col);
+      });
+      c.fillStyle = grad2;
+      c.globalAlpha = 0.3 + intMult * 0.5;
+      c.fillText(sub, subX, subY, maxW);
+    }
+    c.restore();
+  }
+}
+
+function getOrCreateParticles(slideIdx, effect, intensity, w, h) {
+  const key = slideIdx;
+  const cached = particleCaches.get(key);
+  if (cached && cached.effect === effect && cached.w === w && cached.h === h &&
+      Math.abs(cached.intensity - intensity) < 0.05) {
+    return cached.particles;
+  }
+  const count = getParticleCount(effect);
+  const particles = createParticles(effect, intensity, w, h, count);
+  particleCaches.set(key, { particles, effect, intensity, w, h });
+  return particles;
+}
+
 // ===== UPLOAD =====
 const uz = document.getElementById('uploadZone');
 uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('dragover'); });
@@ -325,7 +754,12 @@ function handleFiles(files) {
           trans: document.getElementById('transition').value,
           hl: document.getElementById('headline').value,
           sub: document.getElementById('subtitle').value,
-          bg: document.getElementById('bgType').value
+          bg: document.getElementById('bgType').value,
+          effect: 'none',
+          effectIntensity: 0.5,
+          font: 'Inter',
+          customBg1: '#1a0f00',
+          customBg2: '#0a0500'
         });
         loaded++;
         if (loaded >= total) {
@@ -339,7 +773,7 @@ function handleFiles(files) {
   });
 }
 
-function clearAll() { S.photos=[]; S.slides=[]; S.cur=0; refresh(); }
+function clearAll() { S.photos=[]; S.slides=[]; S.cur=0; particleCaches.clear(); refresh(); }
 
 function addTextSlide() {
   S.slides.push({
@@ -348,7 +782,12 @@ function addTextSlide() {
     trans: document.getElementById('transition').value,
     hl: document.getElementById('headline').value || 'Your Headline',
     sub: document.getElementById('subtitle').value || 'Your subtitle text here',
-    bg: document.getElementById('bgType').value || 'dark-grad'
+    bg: document.getElementById('bgType').value || 'dark-grad',
+    effect: 'none',
+    effectIntensity: 0.5,
+    font: 'Inter',
+    customBg1: '#1a0f00',
+    customBg2: '#0a0500'
   });
   S.cur = S.slides.length - 1;
   loadSlideUI(S.cur);
@@ -379,10 +818,12 @@ function renderTimeline() {
   const tl = document.getElementById('timeline');
   if(!S.slides.length) { tl.innerHTML='<div id="timelineEmpty" style="padding:8px;width:100%;text-align:center"><p style="font-size:11px;color:var(--text3)">Upload photos to build your timeline</p></div>'; return; }
   const icons = {fade:'◐',slide:'→',zoom:'⊕',none:'·'};
+  const fxIcons = {'gold-sparkles':'✨','fire-embers':'🔥','neon-glow':'💡','snow-frost':'❄️','smoke-fog':'🌫','divine-light':'🌟','matrix-rain':'💚','electric':'⚡','rainbow-shimmer':'🌈'};
   tl.innerHTML = S.slides.map((s,i) => {
     const p = S.photos[s.pi];
+    const fx = s.effect && s.effect !== 'none' ? `<div class="slide-fx">${fxIcons[s.effect]||'✨'}</div>` : '';
     return `<div class="timeline-slide ${i===S.cur?'active':''}" onclick="goSlide(${i})">${p?`<img src="${p.src}">`:''}
-      <div class="slide-num">${i+1}</div><div class="slide-duration">${s.dur}s</div></div>
+      <div class="slide-num">${i+1}</div>${fx}<div class="slide-duration">${s.dur}s</div></div>
       ${i<S.slides.length-1?`<div class="timeline-trans">${icons[s.trans]||'◐'}</div>`:''}`;
   }).join('') + '<div class="timeline-add" onclick="document.getElementById(\'fileInput\').click()">+</div>';
 }
@@ -395,11 +836,37 @@ function loadSlideUI(i) {
   document.getElementById('slideDuration').value = s.dur;
   document.getElementById('transition').value = s.trans;
   document.getElementById('bgType').value = s.bg||'photo';
+  document.getElementById('effectType').value = s.effect||'none';
+  document.getElementById('effectIntensity').value = Math.round((s.effectIntensity||0.5)*100);
+  document.getElementById('fontFamily').value = s.font||'Inter';
+  // Custom color visibility
+  const ccr = document.getElementById('customColorRow');
+  if (s.bg === 'custom') { ccr.classList.add('visible'); } else { ccr.classList.remove('visible'); }
+  if (s.customBg1) document.getElementById('customBgColor1').value = s.customBg1;
+  if (s.customBg2) document.getElementById('customBgColor2').value = s.customBg2;
 }
 function saveSlideText() { const s=S.slides[S.cur]; if(s){ s.hl=document.getElementById('headline').value; s.sub=document.getElementById('subtitle').value; } }
 function saveSlideDur() { const s=S.slides[S.cur]; if(s){ s.dur=parseInt(document.getElementById('slideDuration').value)||3; renderTimeline(); } }
 function saveSlideTrans() { const s=S.slides[S.cur]; if(s){ s.trans=document.getElementById('transition').value; renderTimeline(); } }
-function saveSlideBg() { const s=S.slides[S.cur]; if(s){ s.bg=document.getElementById('bgType').value; } }
+function saveSlideBg() {
+  const s=S.slides[S.cur]; if(s){ s.bg=document.getElementById('bgType').value; }
+  const ccr = document.getElementById('customColorRow');
+  if (s && s.bg === 'custom') { ccr.classList.add('visible'); } else { ccr.classList.remove('visible'); }
+}
+function saveSlideEffect() {
+  const s=S.slides[S.cur]; if(!s) return;
+  s.effect=document.getElementById('effectType').value;
+  s.effectIntensity=parseInt(document.getElementById('effectIntensity').value)/100;
+  // Clear particle cache for this slide when effect changes
+  particleCaches.delete(S.cur);
+  renderTimeline();
+}
+function saveSlideFont() { const s=S.slides[S.cur]; if(s){ s.font=document.getElementById('fontFamily').value; } }
+function saveSlideCustomColors() {
+  const s=S.slides[S.cur]; if(!s) return;
+  s.customBg1 = document.getElementById('customBgColor1').value;
+  s.customBg2 = document.getElementById('customBgColor2').value;
+}
 function prevSlide() { if(S.cur>0) goSlide(S.cur-1); }
 function nextSlide() { if(S.cur<S.slides.length-1) goSlide(S.cur+1); }
 
@@ -408,7 +875,6 @@ function drawBg(c, sl, w, h, bc) {
   const bgType = sl.bg || 'photo';
   const ph = S.photos[sl.pi];
   if(bgType === 'photo' && ph) { coverImg(c, ph.img, 0, 0, w, h); return; }
-  // Non-photo backgrounds
   let grad;
   switch(bgType) {
     case 'dark':
@@ -428,6 +894,27 @@ function drawBg(c, sl, w, h, bc) {
     case 'light':
       grad = c.createLinearGradient(0,0,0,h);
       grad.addColorStop(0,'#f8f9fa'); grad.addColorStop(1,'#e9ecef');
+      c.fillStyle = grad; c.fillRect(0,0,w,h); break;
+    case 'brown-gold':
+      grad = c.createLinearGradient(0,0,w,h);
+      grad.addColorStop(0,'#1a0f00'); grad.addColorStop(0.5,'#120800'); grad.addColorStop(1,'#0a0500');
+      c.fillStyle = grad; c.fillRect(0,0,w,h); break;
+    case 'blue-purple':
+      grad = c.createLinearGradient(0,0,w,h);
+      grad.addColorStop(0,'#0a0020'); grad.addColorStop(0.5,'#100030'); grad.addColorStop(1,'#1a0040');
+      c.fillStyle = grad; c.fillRect(0,0,w,h); break;
+    case 'red-crimson':
+      grad = c.createLinearGradient(0,0,w,h);
+      grad.addColorStop(0,'#1a0000'); grad.addColorStop(0.5,'#140505'); grad.addColorStop(1,'#0d0505');
+      c.fillStyle = grad; c.fillRect(0,0,w,h); break;
+    case 'forest-green':
+      grad = c.createLinearGradient(0,0,w,h);
+      grad.addColorStop(0,'#001a0a'); grad.addColorStop(0.5,'#051510'); grad.addColorStop(1,'#0a1a10');
+      c.fillStyle = grad; c.fillRect(0,0,w,h); break;
+    case 'custom':
+      grad = c.createLinearGradient(0,0,w,h);
+      grad.addColorStop(0, sl.customBg1 || '#1a0f00');
+      grad.addColorStop(1, sl.customBg2 || '#0a0500');
       c.fillStyle = grad; c.fillRect(0,0,w,h); break;
     default:
       if(ph) coverImg(c, ph.img, 0, 0, w, h);
@@ -451,7 +938,21 @@ function drawCurrent() {
   const sl = S.slides[S.cur]; if(!sl) return;
   const bc = document.getElementById('brandColor').value;
   drawBg(ctx, sl, a.w, a.h, bc);
-  overlays(ctx,sl,a.w,a.h,1);
+
+  // Draw particle effects (static snapshot for preview)
+  const effect = sl.effect || 'none';
+  const intensity = sl.effectIntensity != null ? sl.effectIntensity : 0.5;
+  if (effect !== 'none' && effect !== 'neon-glow' && effect !== 'rainbow-shimmer') {
+    const particles = getOrCreateParticles(S.cur, effect, intensity, a.w, a.h);
+    drawParticles(ctx, particles, effect, intensity, a.w, a.h);
+  }
+
+  const textInfo = overlays(ctx,sl,a.w,a.h,1);
+
+  // Text-based effects
+  if (effect === 'neon-glow' || effect === 'rainbow-shimmer') {
+    drawTextEffect(ctx, effect, intensity, textInfo, performance.now() / 1000);
+  }
 }
 
 function drawEmpty(a) {
@@ -482,10 +983,12 @@ function overlays(c,sl,w,h,scale) {
   const bw=document.getElementById('bizWebsite').value;
   const barH=52*scale;
   const bgType=sl.bg||'photo';
-  // For non-photo backgrounds: skip the dark text bg box (text reads directly on bg)
+  const fontName = sl.font || 'Inter';
+  const fontCSS = FONTS[fontName] || "'Inter', sans-serif";
   const isTextBg = (bgType !== 'photo');
-  // Auto text color for light bg
   const autoTc = (bgType === 'light') ? '#1a1a1a' : tc;
+
+  let textInfo = null;
 
   // Text overlay
   if(hl||sub) {
@@ -497,8 +1000,15 @@ function overlays(c,sl,w,h,scale) {
     else bY=h-bH-(bp==='bottom'&&bn?barH:0);
     if(!isTextBg) { c.fillStyle=`rgba(0,0,0,${bgo})`; c.fillRect(0,bY,w,bH); }
     c.textAlign='center'; c.fillStyle=autoTc;
-    if(hl){c.font=`700 ${fs}px Inter,sans-serif`;c.fillText(hl,w/2,bY+pad+fs*0.82,w-30*scale);}
-    if(sub){c.font=`400 ${Math.round(fs*0.48)}px Inter,sans-serif`;c.fillText(sub,w/2,bY+pad+(hl?fs*1.25:0)+fs*0.38,w-30*scale);}
+    const hlFont = `700 ${fs}px ${fontCSS}`;
+    const subFont = `400 ${Math.round(fs*0.48)}px ${fontCSS}`;
+    const hlY = bY+pad+fs*0.82;
+    const subY = bY+pad+(hl?fs*1.25:0)+fs*0.38;
+    const maxW = w-30*scale;
+    if(hl){c.font=hlFont;c.fillText(hl,w/2,hlY,maxW);}
+    if(sub){c.font=subFont;c.fillText(sub,w/2,subY,maxW);}
+
+    textInfo = { hl, sub, hlX: w/2, hlY, subX: w/2, subY, hlFont, subFont, w, maxW };
   }
 
   // Brand bar
@@ -507,14 +1017,16 @@ function overlays(c,sl,w,h,scale) {
     const dynBarH=Math.max(52,(bfs*3.4))*scale;
     const bY=bp==='top'?0:h-dynBarH;
     c.fillStyle=bc+'dd'; c.fillRect(0,bY,w,dynBarH);
-    c.fillStyle='#fff'; c.textAlign='left'; c.font=`700 ${bfs*scale}px Inter,sans-serif`;
+    c.fillStyle='#fff'; c.textAlign='left'; c.font=`700 ${bfs*scale}px ${fontCSS}`;
     c.fillText(bn,10*scale,bY+dynBarH*0.45);
-    if(bph){c.font=`500 ${Math.round(bfs*0.82*scale)}px Inter,sans-serif`;c.fillText(bph,10*scale,bY+dynBarH*0.78);}
-    if(bw){c.textAlign='right';c.font=`500 ${Math.round(bfs*0.75*scale)}px Inter,sans-serif`;c.fillText(bw,w-10*scale,bY+dynBarH*(bph?0.78:0.62));}
+    if(bph){c.font=`500 ${Math.round(bfs*0.82*scale)}px ${fontCSS}`;c.fillText(bph,10*scale,bY+dynBarH*0.78);}
+    if(bw){c.textAlign='right';c.font=`500 ${Math.round(bfs*0.75*scale)}px ${fontCSS}`;c.fillText(bw,w-10*scale,bY+dynBarH*(bph?0.78:0.62));}
   }
+
+  return textInfo;
 }
 
-function setAspect(r,btn) { S.aspect=r; document.querySelectorAll('.aspect-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); drawCurrent(); }
+function setAspect(r,btn) { S.aspect=r; document.querySelectorAll('.aspect-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); particleCaches.clear(); drawCurrent(); }
 function pickTemplate(name,el) {
   document.querySelectorAll('.template-card').forEach(c=>c.classList.remove('active')); el.classList.add('active');
   const t=TEMPLATES[name];
@@ -555,6 +1067,31 @@ function stopPlay() {
   document.getElementById('playBtnSm').textContent='▶';
   if(S.audio){S.audio.pause();S.audio.currentTime=0;}
   if(S.animId) cancelAnimationFrame(S.animId);
+  drawCurrent(); // redraw static
+}
+
+function renderSlideWithEffects(c, sl, slideIdx, w, h, bc, scale, time, animateParticles) {
+  c.fillStyle='#111'; c.fillRect(0,0,w,h);
+  drawBg(c, sl, w, h, bc);
+
+  const effect = sl.effect || 'none';
+  const intensity = sl.effectIntensity != null ? sl.effectIntensity : 0.5;
+
+  // Particle effects
+  if (effect !== 'none' && effect !== 'neon-glow' && effect !== 'rainbow-shimmer') {
+    const particles = getOrCreateParticles(slideIdx, effect, intensity, w, h);
+    if (animateParticles) {
+      particles.forEach(p => updateParticle(p, effect, w, h));
+    }
+    drawParticles(c, particles, effect, intensity, w, h);
+  }
+
+  const textInfo = overlays(c, sl, w, h, scale);
+
+  // Text effects
+  if (effect === 'neon-glow' || effect === 'rainbow-shimmer') {
+    drawTextEffect(c, effect, intensity, textInfo, time);
+  }
 }
 
 function playTick() {
@@ -562,59 +1099,48 @@ function playTick() {
   const elapsed=(performance.now()-S.startTime)/1000;
   const totalDur=S.slides.reduce((s,sl)=>s+sl.dur,0);
   document.getElementById('timeDisplay').textContent=`${fmt(Math.min(elapsed,totalDur))} / ${fmt(totalDur)}`;
+  const time = performance.now() / 1000;
 
-  // Find which slide we should be on
   let cumTime=0;
   for(let i=0;i<S.slides.length;i++){
     cumTime+=S.slides[i].dur;
     if(elapsed<cumTime){
-      if(i!==S.cur){S.cur=i;renderTimeline();renderGrid();}
-      // Draw with transition
+      if(i!==S.cur){S.cur=i;renderTimeline();renderGrid();loadSlideUI(i);}
       const slideStart=cumTime-S.slides[i].dur;
       const slideElapsed=elapsed-slideStart;
       const transTime=0.6;
+      const a=ASPECT[S.aspect]; canvas.width=a.w; canvas.height=a.h;
+      const bc=document.getElementById('brandColor').value;
+
       if(slideElapsed<transTime && i>0){
-        drawTransition(i-1,i,slideElapsed/transTime,S.slides[i-1].trans);
-      } else {
-        const a=ASPECT[S.aspect]; canvas.width=a.w; canvas.height=a.h;
+        const p=slideElapsed/transTime;
+        const fCanvas2=document.createElement('canvas');fCanvas2.width=a.w;fCanvas2.height=a.h;
+        const tCanvas2=document.createElement('canvas');tCanvas2.width=a.w;tCanvas2.height=a.h;
+        renderSlideWithEffects(fCanvas2.getContext('2d'),S.slides[i-1],i-1,a.w,a.h,bc,1,time,true);
+        renderSlideWithEffects(tCanvas2.getContext('2d'),S.slides[i],i,a.w,a.h,bc,1,time,true);
+        const prevTrans=S.slides[i-1].trans;
         ctx.fillStyle='#111'; ctx.fillRect(0,0,a.w,a.h);
-        const bc=document.getElementById('brandColor').value;
-        drawBg(ctx,S.slides[i],a.w,a.h,bc);
-        overlays(ctx,S.slides[i],a.w,a.h,1);
+        if(prevTrans==='fade'){
+          ctx.globalAlpha=1-p;ctx.drawImage(fCanvas2,0,0);
+          ctx.globalAlpha=p;ctx.drawImage(tCanvas2,0,0);
+          ctx.globalAlpha=1;
+        } else if(prevTrans==='slide'){
+          const o=a.w*(1-p);
+          ctx.drawImage(fCanvas2,-a.w+o,0);ctx.drawImage(tCanvas2,o,0);
+        } else if(prevTrans==='zoom'){
+          ctx.drawImage(fCanvas2,0,0);
+          ctx.save();ctx.translate(a.w/2,a.h/2);const sc=1+(1-p)*0.3;ctx.scale(sc,sc);ctx.globalAlpha=p;ctx.drawImage(tCanvas2,-a.w/2,-a.h/2);ctx.restore();ctx.globalAlpha=1;
+        } else {
+          ctx.drawImage(tCanvas2,0,0);
+        }
+      } else {
+        renderSlideWithEffects(ctx,S.slides[i],i,a.w,a.h,bc,1,time,true);
       }
       S.animId=requestAnimationFrame(playTick);
       return;
     }
   }
-  // End
   stopPlay();
-}
-
-function drawTransition(fi,ti,p,type) {
-  const a=ASPECT[S.aspect]; canvas.width=a.w; canvas.height=a.h;
-  const fsl=S.slides[fi], tsl=S.slides[ti];
-  const bc=document.getElementById('brandColor').value;
-  ctx.fillStyle='#111'; ctx.fillRect(0,0,a.w,a.h);
-  // Create off-screen canvases for from/to frames
-  const fCanvas=document.createElement('canvas'); fCanvas.width=a.w; fCanvas.height=a.h;
-  const tCanvas=document.createElement('canvas'); tCanvas.width=a.w; tCanvas.height=a.h;
-  const fc=fCanvas.getContext('2d'); const tc2=tCanvas.getContext('2d');
-  if(fsl){drawBg(fc,fsl,a.w,a.h,bc);overlays(fc,fsl,a.w,a.h,1);}
-  if(tsl){drawBg(tc2,tsl,a.w,a.h,bc);overlays(tc2,tsl,a.w,a.h,1);}
-  if(type==='fade'){
-    ctx.globalAlpha=1-p; ctx.drawImage(fCanvas,0,0);
-    ctx.globalAlpha=p; ctx.drawImage(tCanvas,0,0);
-    ctx.globalAlpha=1;
-  } else if(type==='slide'){
-    const o=a.w*(1-p);
-    ctx.drawImage(fCanvas,-a.w+o,0);
-    ctx.drawImage(tCanvas,o,0);
-  } else if(type==='zoom'){
-    ctx.drawImage(fCanvas,0,0);
-    ctx.save();ctx.translate(a.w/2,a.h/2);const sc=1+(1-p)*0.3;ctx.scale(sc,sc);ctx.globalAlpha=p;ctx.drawImage(tCanvas,-a.w/2,-a.h/2);ctx.restore();ctx.globalAlpha=1;
-  } else {
-    ctx.drawImage(tCanvas,0,0);
-  }
 }
 
 function fmt(s){return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;}
@@ -649,24 +1175,51 @@ async function doExport(){
   const totalFrames=S.slides.reduce((s,sl)=>s+sl.dur*30,0);
   let frame=0;
   const exBc=document.getElementById('brandColor').value;
-  // Helper: render a slide onto a given context at export size
-  function renderSlideEx(ctx2, sl, w, h, sc) {
+
+  // Create export particle caches separate from preview
+  const exportParticleCaches = new Map();
+  function getExportParticles(slideIdx, effect, intensity, w, h) {
+    const cached = exportParticleCaches.get(slideIdx);
+    if (cached && cached.effect === effect) return cached.particles;
+    const count = getParticleCount(effect);
+    const particles = createParticles(effect, intensity, w, h, count);
+    exportParticleCaches.set(slideIdx, { particles, effect });
+    return particles;
+  }
+
+  function renderSlideExport(ctx2, sl, slideIdx, w, h, sc, frameNum) {
     ctx2.fillStyle='#111'; ctx2.fillRect(0,0,w,h);
     drawBg(ctx2, sl, w, h, exBc);
-    overlays(ctx2, sl, w, h, sc);
+
+    const effect = sl.effect || 'none';
+    const intensity = sl.effectIntensity != null ? sl.effectIntensity : 0.5;
+    const time = frameNum / 30; // simulate time
+
+    if (effect !== 'none' && effect !== 'neon-glow' && effect !== 'rainbow-shimmer') {
+      const particles = getExportParticles(slideIdx, effect, intensity, w, h);
+      particles.forEach(p => updateParticle(p, effect, w, h));
+      drawParticles(ctx2, particles, effect, intensity, w, h);
+    }
+
+    const textInfo = overlays(ctx2, sl, w, h, sc);
+    if (effect === 'neon-glow' || effect === 'rainbow-shimmer') {
+      drawTextEffect(ctx2, effect, intensity, textInfo, time);
+    }
   }
+
+  let globalFrame = 0;
   for(let si=0;si<S.slides.length;si++){
     const sl=S.slides[si];
     const frames=sl.dur*30;const tf=Math.min(18,frames);
     const prevTrans=si>0?S.slides[si-1].trans:'none';
     for(let f=0;f<frames;f++){
-      ex.fillStyle='#111';ex.fillRect(0,0,pre.w,pre.h);
       if(f<tf&&si>0){
         const p=f/tf;
         const fCanvas2=document.createElement('canvas');fCanvas2.width=pre.w;fCanvas2.height=pre.h;
         const tCanvas2=document.createElement('canvas');tCanvas2.width=pre.w;tCanvas2.height=pre.h;
-        renderSlideEx(fCanvas2.getContext('2d'),S.slides[si-1],pre.w,pre.h,scale);
-        renderSlideEx(tCanvas2.getContext('2d'),sl,pre.w,pre.h,scale);
+        renderSlideExport(fCanvas2.getContext('2d'),S.slides[si-1],si-1,pre.w,pre.h,scale,globalFrame);
+        renderSlideExport(tCanvas2.getContext('2d'),sl,si,pre.w,pre.h,scale,globalFrame);
+        ex.fillStyle='#111';ex.fillRect(0,0,pre.w,pre.h);
         if(prevTrans==='fade'){
           ex.globalAlpha=1-p;ex.drawImage(fCanvas2,0,0);
           ex.globalAlpha=p;ex.drawImage(tCanvas2,0,0);
@@ -682,9 +1235,9 @@ async function doExport(){
           ex.drawImage(tCanvas2,0,0);
         }
       } else {
-        renderSlideEx(ex,sl,pre.w,pre.h,scale);
+        renderSlideExport(ex,sl,si,pre.w,pre.h,scale,globalFrame);
       }
-      frame++;
+      frame++; globalFrame++;
       const pct=Math.round(frame/totalFrames*100);
       document.getElementById('progressFill').style.width=pct+'%';
       document.getElementById('exportStatus').textContent='Recording... '+pct+'%';
