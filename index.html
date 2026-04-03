@@ -264,6 +264,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
         <div class="template-card" onclick="pickTemplate('titlecard',this)"><div class="template-icon">🎬</div><div class="template-name">Title Card</div></div>
         <div class="template-card" onclick="pickTemplate('cta',this)"><div class="template-icon">📞</div><div class="template-name">Call To Action</div></div>
         <div class="template-card" onclick="pickTemplate('quote',this)"><div class="template-icon">💬</div><div class="template-name">Quote</div></div>
+        <div class="template-card" onclick="clearSlideText(this)" style="border-color:var(--danger);border-style:dashed"><div class="template-icon">🚫</div><div class="template-name">Clear Text</div></div>
       </div>
     </div>
 
@@ -1144,6 +1145,19 @@ function pickTemplate(name,el) {
     if(t.pos) document.getElementById('textPosition').value=t.pos;
     if(t.fs) document.getElementById('fontSize').value=t.fs;
     if(t.bgo!==undefined) document.getElementById('bgOpacity').value=t.bgo;
+    refresh();
+  }
+}
+
+function clearSlideText(el) {
+  document.querySelectorAll('.template-card').forEach(c=>c.classList.remove('active')); el.classList.add('active');
+  if (S.slides.length > 0 && S.cur >= 0 && S.cur < S.slides.length) {
+    const slide = S.slides[S.cur];
+    slide.hl = '';
+    slide.sub = '';
+    loadSlideUI(S.cur);
+    saveSlideText();
+    drawCurrent();
     refresh();
   }
 }
