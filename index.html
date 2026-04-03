@@ -134,6 +134,66 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ===== MOBILE TABS ===== */
+.mobile-tabs { display: none; background: var(--bg2); border-bottom: 1px solid var(--bg3); }
+.mobile-tabs-inner { display: flex; overflow-x: auto; gap: 0; }
+.mobile-tab { flex: 1; min-width: 0; padding: 10px 6px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text3); font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; text-align: center; white-space: nowrap; }
+.mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  body { overflow: auto; }
+  .topbar { padding: 8px 10px; height: 44px; }
+  .topbar-title { font-size: 13px; }
+  .topbar-subtitle { display: none; }
+  .topbar-actions .btn { padding: 5px 8px; font-size: 11px; }
+  .topbar-actions .btn span.btn-label { display: none; }
+
+  .mobile-tabs { display: block; }
+
+  .app-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    height: auto !important;
+    min-height: calc(100vh - 44px);
+  }
+
+  .panel-left, .panel-center, .panel-right, .timeline-wrapper {
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+  }
+
+  /* Hide all panels by default, show based on data-mobile-tab */
+  .panel-left { display: none; max-height: none; overflow-y: auto; border-bottom: 1px solid var(--bg3) !important; }
+  .panel-center { display: none; padding: 8px; min-height: 280px; }
+  .panel-right { display: none; max-height: none; overflow-y: auto; }
+  .timeline-wrapper { display: none; height: auto; padding: 6px 0; border-top: 1px solid var(--bg3) !important; }
+
+  .panel-left.mobile-visible { display: block; }
+  .panel-center.mobile-visible { display: flex; }
+  .panel-right.mobile-visible { display: block; }
+  .timeline-wrapper.mobile-visible { display: flex; }
+
+  #preview-canvas { max-height: 50vh; }
+  .canvas-controls { flex-wrap: wrap; gap: 4px; }
+
+  .photo-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .template-grid { grid-template-columns: 1fr 1fr 1fr; }
+
+  .timeline-slide { width: 70px; height: 42px; }
+  .timeline-add { width: 42px; height: 42px; font-size: 16px; }
+}
+
+@media (max-width: 400px) {
+  .photo-grid { grid-template-columns: 1fr 1fr; }
+  .template-grid { grid-template-columns: 1fr 1fr; }
+  .mobile-tab { font-size: 10px; padding: 8px 4px; }
+}
 </style>
 </head>
 <body>
@@ -152,6 +212,14 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
   </div>
 </div>
 
+<div class="mobile-tabs" id="mobileTabs">
+  <div class="mobile-tabs-inner">
+    <button class="mobile-tab active" onclick="switchMobileTab('media',this)">📷 Media</button>
+    <button class="mobile-tab" onclick="switchMobileTab('preview',this)">👁 Preview</button>
+    <button class="mobile-tab" onclick="switchMobileTab('settings',this)">⚙️ Settings</button>
+    <button class="mobile-tab" onclick="switchMobileTab('timeline',this)">🎬 Timeline</button>
+  </div>
+</div>
 <div class="app-layout">
   <div class="panel-left">
     <div class="panel-header">
@@ -373,6 +441,23 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 </div>
 
 <script>
+// ===== MOBILE TABS =====
+function switchMobileTab(tab, btn) {
+  document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelector('.panel-left').classList.toggle('mobile-visible', tab === 'media');
+  document.querySelector('.panel-center').classList.toggle('mobile-visible', tab === 'preview');
+  document.querySelector('.panel-right').classList.toggle('mobile-visible', tab === 'settings');
+  document.querySelector('.timeline-wrapper').classList.toggle('mobile-visible', tab === 'timeline');
+  if (tab === 'preview') { setTimeout(() => drawCurrent(), 100); }
+}
+// Init mobile: show media tab by default on load
+if (window.innerWidth <= 768) {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('.panel-left').classList.add('mobile-visible');
+  });
+}
+
 // ===== STATE =====
 const S = {
   photos: [], slides: [], cur: 0, playing: false, aspect: '16:9',
