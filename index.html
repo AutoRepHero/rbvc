@@ -307,9 +307,23 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 
     <div class="settings-section">
       <h3>🎵 Audio</h3>
-      <div class="form-group"><label>Background Music</label><input type="file" accept="audio/*" id="audioInput" onchange="loadAudio(this.files[0])" style="font-size:11px"></div>
+      <div class="form-group"><label>Music Track</label>
+        <select id="musicSelect" onchange="selectMusic(this.value)" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--bg4);border-radius:5px;color:var(--text);font-family:inherit;font-size:12px">
+          <option value="none">No Music</option>
+          <option value="upbeat-pop">🎵 Upbeat Pop (Promo)</option>
+          <option value="warm-corporate">🏢 Warm Corporate</option>
+          <option value="feel-good">😊 Feel Good Energy</option>
+          <option value="chill-lofi">🎧 Chill Lo-Fi</option>
+          <option value="epic-cinematic">🎬 Epic Cinematic</option>
+          <option value="driving-rock">🎸 Driving Rock</option>
+          <option value="happy-acoustic">🎸 Happy Acoustic</option>
+          <option value="custom">📁 Upload Your Own...</option>
+        </select>
+      </div>
+      <div class="form-group" id="customAudioRow" style="display:none"><label>Upload Audio</label><input type="file" accept="audio/*" id="audioInput" onchange="loadAudio(this.files[0])" style="font-size:11px"></div>
       <div id="audioStatus" style="font-size:11px;color:var(--text3);margin-bottom:6px"></div>
       <div class="form-group"><label>Volume</label><input type="range" id="audioVolume" min="0" max="100" value="50" oninput="updateVolume()"></div>
+      <div id="musicPreviewBtn" style="display:none;margin-top:4px"><button class="btn btn-sm btn-secondary" onclick="previewMusic()" id="prevMusicBtn">▶ Preview</button></div>
     </div>
   </div>
 
@@ -1120,15 +1134,213 @@ function pickTemplate(name,el) {
   refresh();
 }
 
-// ===== AUDIO =====
+// ===== AUDIO / MUSIC LIBRARY =====
+let audioCtx = null;
+let musicSource = null;
+let musicGain = null;
+let musicBuffer = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// Generate music tracks using Web Audio API
+function generateMusicTrack(type) {
+  const ctx = getAudioCtx();
+  const sr = ctx.sampleRate;
+  const dur = 16; // 16-second loop
+  const frames = sr * dur;
+  const buf = ctx.createBuffer(2, frames, sr);
+  const L = buf.getChannelData(0);
+  const R = buf.getChannelData(1);
+
+  // Musical helpers
+  const noteFreq = (note) => 440 * Math.pow(2, (note - 69) / 12);
+  const sin = (f, t) => Math.sin(2 * Math.PI * f * t);
+  const env = (t, a, d, s, r, dur) => {
+    if (t < a) return t / a;
+    if (t < a + d) return 1 - (1 - s) * (t - a) / d;
+    if (t < dur - r) return s;
+    return s * (dur - t) / r;
+  };
+
+  // Chord progressions (MIDI notes)
+  const CHORDS = {
+    'upbeat-pop':     [[60,64,67,72],[65,69,72,77],[67,71,74,79],[60,64,67,72]],
+    'warm-corporate': [[60,64,67,71],[65,69,72,76],[62,65,69,74],[67,71,74,79]],
+    'feel-good':      [[65,69,72,77],[67,71,74,79],[60,64,67,72],[62,65,69,74]],
+    'chill-lofi':     [[60,63,67,70],[58,62,65,70],[56,60,63,68],[58,62,65,70]],
+    'epic-cinematic': [[48,55,60,64],[53,57,60,65],[55,59,62,67],[48,55,60,64]],
+    'driving-rock':   [[48,52,55,60],[53,57,60,65],[50,55,57,62],[48,52,55,60]],
+    'happy-acoustic': [[60,64,67,72],[65,69,72,77],[62,66,69,74],[67,71,74,79]]
+  };
+  const TEMPOS = {
+    'upbeat-pop':120, 'warm-corporate':100, 'feel-good':115,
+    'chill-lofi':75, 'epic-cinematic':80, 'driving-rock':130, 'happy-acoustic':110
+  };
+
+  const chords = CHORDS[type] || CHORDS['upbeat-pop'];
+  const bpm = TEMPOS[type] || 110;
+  const beatLen = 60 / bpm;
+  const barLen = beatLen * 4;
+
+  for (let i = 0; i < frames; i++) {
+    const t = i / sr;
+    const bar = Math.floor(t / barLen) % chords.length;
+    const beatInBar = (t % barLen) / beatLen;
+    const chord = chords[bar];
+    let sample = 0;
+
+    // Pad/synth layer
+    for (let n = 0; n < chord.length; n++) {
+      const f = noteFreq(chord[n]);
+      const padVol = type === 'epic-cinematic' ? 0.08 : 0.05;
+      sample += sin(f, t) * padVol * env(t % barLen, 0.1, 0.3, 0.6, 0.2, barLen);
+      // Add slight detuned layer for warmth
+      sample += sin(f * 1.003, t) * padVol * 0.5 * env(t % barLen, 0.15, 0.3, 0.5, 0.2, barLen);
+    }
+
+    // Bass line (root of chord, octave down)
+    const bassFreq = noteFreq(chord[0] - 12);
+    const bassEnv = env(t % beatLen, 0.01, 0.1, 0.4, 0.05, beatLen);
+    if (type === 'driving-rock' || type === 'upbeat-pop') {
+      sample += (sin(bassFreq, t) + 0.3 * sin(bassFreq * 2, t)) * 0.12 * bassEnv;
+    } else {
+      sample += sin(bassFreq, t) * 0.08 * bassEnv;
+    }
+
+    // Rhythm/percussion layer
+    const beatPos = t % beatLen;
+    const beat16 = Math.floor((t % barLen) / (beatLen / 4)) % 16;
+    // Kick on 1 and 3
+    if (beat16 === 0 || beat16 === 8) {
+      const kickT = beatPos;
+      if (kickT < 0.15) {
+        const kickFreq = 150 * Math.exp(-kickT * 30);
+        sample += sin(kickFreq, kickT) * 0.2 * Math.exp(-kickT * 20);
+      }
+    }
+    // Snare/clap on 2 and 4
+    if (beat16 === 4 || beat16 === 12) {
+      const snareT = beatPos;
+      if (snareT < 0.1) {
+        sample += (Math.random() * 2 - 1) * 0.1 * Math.exp(-snareT * 40);
+      }
+    }
+    // Hi-hat pattern
+    const hhVol = (type === 'chill-lofi') ? 0.02 : 0.04;
+    if (beat16 % 2 === 0 || type === 'driving-rock') {
+      const hhT = t % (beatLen / 4);
+      if (hhT < 0.02) {
+        sample += (Math.random() * 2 - 1) * hhVol * Math.exp(-hhT * 200);
+      }
+    }
+
+    // Melody layer (arpeggiate chord notes)
+    if (type !== 'chill-lofi') {
+      const melNoteIdx = Math.floor(beatInBar * 2) % chord.length;
+      const melFreq = noteFreq(chord[melNoteIdx] + 12);
+      const melEnv = env(t % (beatLen / 2), 0.01, 0.05, 0.3, 0.05, beatLen / 2);
+      const melVol = type === 'epic-cinematic' ? 0.04 : 0.03;
+      sample += sin(melFreq, t) * melVol * melEnv;
+    }
+
+    // Soft clamp
+    sample = Math.max(-0.9, Math.min(0.9, sample));
+
+    // Stereo spread
+    const spread = sin(0.5, t) * 0.1;
+    L[i] = sample * (1 + spread);
+    R[i] = sample * (1 - spread);
+  }
+
+  return buf;
+}
+
+function selectMusic(val) {
+  stopMusicPreview();
+  document.getElementById('customAudioRow').style.display = val === 'custom' ? '' : 'none';
+  document.getElementById('musicPreviewBtn').style.display = (val !== 'none' && val !== 'custom') ? '' : 'none';
+
+  if (val === 'none') {
+    S.audio = null;
+    musicBuffer = null;
+    document.getElementById('audioStatus').textContent = '';
+    return;
+  }
+  if (val === 'custom') {
+    document.getElementById('audioStatus').textContent = '';
+    return;
+  }
+
+  document.getElementById('audioStatus').textContent = '⏳ Generating track...';
+  setTimeout(() => {
+    try {
+      musicBuffer = generateMusicTrack(val);
+      S.audio = null; // Clear file-based audio
+      S.musicType = val;
+      const names = {'upbeat-pop':'Upbeat Pop','warm-corporate':'Warm Corporate','feel-good':'Feel Good Energy','chill-lofi':'Chill Lo-Fi','epic-cinematic':'Epic Cinematic','driving-rock':'Driving Rock','happy-acoustic':'Happy Acoustic'};
+      document.getElementById('audioStatus').textContent = '🎵 ' + (names[val] || val) + ' (generated)';
+    } catch(e) {
+      document.getElementById('audioStatus').textContent = '❌ Error generating track';
+    }
+  }, 50);
+}
+
+function previewMusic() {
+  if (!musicBuffer) return;
+  const btn = document.getElementById('prevMusicBtn');
+  if (musicSource) { stopMusicPreview(); return; }
+  const ctx = getAudioCtx();
+  musicSource = ctx.createBufferSource();
+  musicGain = ctx.createGain();
+  musicSource.buffer = musicBuffer;
+  musicSource.loop = true;
+  musicGain.gain.value = document.getElementById('audioVolume').value / 100;
+  musicSource.connect(musicGain);
+  musicGain.connect(ctx.destination);
+  musicSource.start();
+  btn.textContent = '⏹ Stop';
+  musicSource.onended = () => { btn.textContent = '▶ Preview'; musicSource = null; };
+}
+
+function stopMusicPreview() {
+  if (musicSource) { try { musicSource.stop(); } catch(e){} musicSource = null; }
+  const btn = document.getElementById('prevMusicBtn');
+  if (btn) btn.textContent = '▶ Preview';
+}
+
+function playGeneratedMusic() {
+  if (!musicBuffer) return;
+  const ctx = getAudioCtx();
+  if (musicSource) { try { musicSource.stop(); } catch(e){} }
+  musicSource = ctx.createBufferSource();
+  musicGain = ctx.createGain();
+  musicSource.buffer = musicBuffer;
+  musicSource.loop = true;
+  musicGain.gain.value = document.getElementById('audioVolume').value / 100;
+  musicSource.connect(musicGain);
+  musicGain.connect(ctx.destination);
+  musicSource.start();
+}
+
+function stopGeneratedMusic() {
+  if (musicSource) { try { musicSource.stop(); } catch(e){} musicSource = null; }
+}
+
 function loadAudio(file) {
   if(!file) return;
+  musicBuffer = null; // Clear generated music
   S.audio = new Audio(URL.createObjectURL(file));
   S.audio.loop = true;
   document.getElementById('audioStatus').textContent = '🎵 ' + file.name;
   updateVolume();
 }
-function updateVolume() { if(S.audio) S.audio.volume = document.getElementById('audioVolume').value/100; }
+function updateVolume() {
+  if(S.audio) S.audio.volume = document.getElementById('audioVolume').value/100;
+  if(musicGain) musicGain.gain.value = document.getElementById('audioVolume').value/100;
+}
 
 // ===== PLAYBACK =====
 function togglePlay() {
@@ -1139,6 +1351,7 @@ function togglePlay() {
   document.getElementById('playBtnSm').textContent='⏸';
   goSlide(0);
   if(S.audio) { S.audio.currentTime=0; updateVolume(); S.audio.play().catch(()=>{}); }
+  else if(musicBuffer) { stopMusicPreview(); playGeneratedMusic(); }
   playTick();
 }
 
@@ -1147,6 +1360,7 @@ function stopPlay() {
   document.getElementById('playBtn').innerHTML='▶ Preview';
   document.getElementById('playBtnSm').textContent='▶';
   if(S.audio){S.audio.pause();S.audio.currentTime=0;}
+  stopGeneratedMusic();
   if(S.animId) cancelAnimationFrame(S.animId);
   drawCurrent(); // redraw static
 }
