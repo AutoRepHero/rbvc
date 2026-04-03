@@ -135,22 +135,16 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
-/* ===== MOBILE TABS ===== */
-.mobile-tabs { display: none; background: var(--bg2); border-bottom: 1px solid var(--bg3); }
-.mobile-tabs-inner { display: flex; overflow-x: auto; gap: 0; }
-.mobile-tab { flex: 1; min-width: 0; padding: 10px 6px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text3); font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; text-align: center; white-space: nowrap; }
-.mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+/* ===== MOBILE TABS (hidden - not used in stacked layout) ===== */
+.mobile-tabs { display: none; }
 
-/* ===== MOBILE RESPONSIVE ===== */
+/* ===== MOBILE RESPONSIVE — STACKED LAYOUT ===== */
 @media (max-width: 768px) {
   body { overflow: auto; }
-  .topbar { padding: 8px 10px; height: 44px; }
+  .topbar { padding: 8px 10px; height: 44px; position: sticky; top: 0; z-index: 100; }
   .topbar-title { font-size: 13px; }
   .topbar-subtitle { display: none; }
   .topbar-actions .btn { padding: 5px 8px; font-size: 11px; }
-  .topbar-actions .btn span.btn-label { display: none; }
-
-  .mobile-tabs { display: block; }
 
   .app-layout {
     display: flex !important;
@@ -161,38 +155,44 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
     min-height: calc(100vh - 44px);
   }
 
+  /* All panels stack vertically, all visible */
   .panel-left, .panel-center, .panel-right, .timeline-wrapper {
     grid-row: auto !important;
     width: 100% !important;
     max-width: 100% !important;
     border: none !important;
+    display: block !important;
   }
 
-  /* Hide all panels by default, show based on data-mobile-tab */
-  .panel-left { display: none; max-height: none; overflow-y: auto; border-bottom: 1px solid var(--bg3) !important; }
-  .panel-center { display: none; padding: 8px; min-height: 280px; }
-  .panel-right { display: none; max-height: none; overflow-y: auto; }
-  .timeline-wrapper { display: none; height: auto; padding: 6px 0; border-top: 1px solid var(--bg3) !important; }
+  /* Order: Preview → Timeline → Media → Settings */
+  .panel-center { order: 1; display: flex !important; padding: 8px; min-height: 200px; max-height: 45vh; border-bottom: 1px solid var(--bg3) !important; }
+  .timeline-wrapper { order: 2; display: flex !important; height: auto; padding: 6px 0; border-bottom: 1px solid var(--bg3) !important; }
+  .panel-left { order: 3; overflow-y: visible; max-height: none; border-bottom: 1px solid var(--bg3) !important; }
+  .panel-right { order: 4; overflow-y: visible; max-height: none; }
 
-  .panel-left.mobile-visible { display: block; }
-  .panel-center.mobile-visible { display: flex; }
-  .panel-right.mobile-visible { display: block; }
-  .timeline-wrapper.mobile-visible { display: flex; }
+  /* Compact upload zone on mobile */
+  .upload-zone { padding: 14px 10px; margin: 6px; }
+  .upload-zone p { font-size: 11px; }
 
-  #preview-canvas { max-height: 50vh; }
+  #preview-canvas { max-height: 40vh; width: auto; }
   .canvas-controls { flex-wrap: wrap; gap: 4px; }
 
-  .photo-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .photo-grid { grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 6px; }
   .template-grid { grid-template-columns: 1fr 1fr 1fr; }
 
   .timeline-slide { width: 70px; height: 42px; }
   .timeline-add { width: 42px; height: 42px; font-size: 16px; }
+
+  /* Collapsible sections on mobile */
+  .settings-section h3 { cursor: pointer; user-select: none; }
+  .settings-section h3::after { content: ' ▾'; font-size: 10px; color: var(--text3); }
+  .settings-section.collapsed h3::after { content: ' ▸'; }
+  .settings-section.collapsed > *:not(h3) { display: none; }
 }
 
 @media (max-width: 400px) {
   .photo-grid { grid-template-columns: 1fr 1fr; }
   .template-grid { grid-template-columns: 1fr 1fr; }
-  .mobile-tab { font-size: 10px; padding: 8px 4px; }
 }
 </style>
 </head>
@@ -441,20 +441,22 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 </div>
 
 <script>
-// ===== MOBILE TABS =====
-function switchMobileTab(tab, btn) {
-  document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelector('.panel-left').classList.toggle('mobile-visible', tab === 'media');
-  document.querySelector('.panel-center').classList.toggle('mobile-visible', tab === 'preview');
-  document.querySelector('.panel-right').classList.toggle('mobile-visible', tab === 'settings');
-  document.querySelector('.timeline-wrapper').classList.toggle('mobile-visible', tab === 'timeline');
-  if (tab === 'preview') { setTimeout(() => drawCurrent(), 100); }
-}
-// Init mobile: show media tab by default on load
+// ===== MOBILE: COLLAPSIBLE SECTIONS =====
 if (window.innerWidth <= 768) {
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelector('.panel-left').classList.add('mobile-visible');
+    document.querySelectorAll('.settings-section h3').forEach(h3 => {
+      h3.addEventListener('click', () => {
+        h3.parentElement.classList.toggle('collapsed');
+      });
+    });
+    // Collapse less-used sections by default on mobile
+    document.querySelectorAll('.panel-right .settings-section').forEach((sec, i) => {
+      const title = sec.querySelector('h3')?.textContent || '';
+      // Keep Text Templates and Text Overlay open, collapse the rest
+      if (!title.includes('Template') && !title.includes('Text Overlay')) {
+        sec.classList.add('collapsed');
+      }
+    });
   });
 }
 
