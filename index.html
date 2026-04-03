@@ -359,7 +359,25 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Text Color</label><input type="color" id="textColor" value="#ffffff" onchange="drawCurrent()" style="height:28px;padding:2px"></div>
+        <div class="form-group"><label>Text Color</label>
+          <div style="display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap;align-items:center">
+            <button onclick="setTextColor('#ffffff')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#ffffff;cursor:pointer" title="White"></button>
+            <button onclick="setTextColor('#000000')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#000000;cursor:pointer" title="Black"></button>
+            <button onclick="setTextColor('#8B4513')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#8B4513;cursor:pointer" title="Brown"></button>
+            <button onclick="setTextColor('#d4a647')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#d4a647;cursor:pointer" title="Gold"></button>
+            <button onclick="setTextColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#ef4444;cursor:pointer" title="Red"></button>
+            <button onclick="setTextColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#3b82f6;cursor:pointer" title="Blue"></button>
+            <button onclick="setTextColor('#22c55e')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#22c55e;cursor:pointer" title="Green"></button>
+            <button onclick="setTextColor('#f59e0b')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#f59e0b;cursor:pointer" title="Orange"></button>
+            <button onclick="setTextColor('#a855f7')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#a855f7;cursor:pointer" title="Purple"></button>
+            <button onclick="setTextColor('#e2e8f0')" style="width:22px;height:22px;border-radius:50%;border:2px solid #555;background:#e2e8f0;cursor:pointer" title="Light Gray"></button>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="color" id="textColor" value="#ffffff" onchange="setTextColor(this.value)" style="width:32px;height:28px;padding:1px;border:1px solid var(--bg4);border-radius:4px;background:var(--bg3);cursor:pointer">
+            <input type="text" id="textColorHex" value="#ffffff" placeholder="#hex" oninput="setTextColorFromHex(this.value)" style="flex:1;padding:5px 8px;background:var(--bg3);border:1px solid var(--bg4);border-radius:5px;color:var(--text);font-family:monospace;font-size:12px">
+            <div id="textColorPreview" style="width:28px;height:28px;border-radius:4px;border:1px solid var(--bg4);background:#ffffff;flex-shrink:0"></div>
+          </div>
+        </div>
         <div class="form-group"><label>BG Opacity</label><input type="range" id="bgOpacity" min="0" max="100" value="60" oninput="drawCurrent()"></div>
       </div>
     </div>
@@ -1032,6 +1050,21 @@ function saveSlideEffect() {
   renderTimeline();
 }
 function saveSlideFont() { const s=S.slides[S.cur]; if(s){ s.font=document.getElementById('fontFamily').value; } }
+function setTextColor(c) {
+  document.getElementById('textColor').value = c;
+  document.getElementById('textColorHex').value = c;
+  document.getElementById('textColorPreview').style.background = c;
+  drawCurrent();
+}
+function setTextColorFromHex(v) {
+  v = v.trim();
+  if (!v.startsWith('#')) v = '#' + v;
+  if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+    document.getElementById('textColor').value = v;
+    document.getElementById('textColorPreview').style.background = v;
+    drawCurrent();
+  }
+}
 function saveSlideCustomColors() {
   const s=S.slides[S.cur]; if(!s) return;
   s.customBg1 = document.getElementById('customBgColor1').value;
