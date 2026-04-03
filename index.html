@@ -96,6 +96,19 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 .timeline-add { flex-shrink: 0; width: 55px; height: 55px; border: 2px dashed var(--bg4); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text3); font-size: 20px; }
 .timeline-add:hover { border-color: var(--accent); color: var(--accent); }
 
+/* Add Slide Menu */
+.add-slide-menu { position: fixed; z-index: 999; background: var(--bg2); border: 1px solid var(--bg4); border-radius: 10px; padding: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); display: none; min-width: 180px; }
+.add-slide-menu.visible { display: block; }
+.add-slide-menu-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--text); transition: background 0.15s; border: none; background: none; width: 100%; text-align: left; font-family: inherit; }
+.add-slide-menu-item:hover { background: var(--bg4); }
+.add-slide-menu-item .menu-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+.add-slide-menu-item .menu-label { font-weight: 500; }
+.add-slide-menu-sep { height: 1px; background: var(--bg4); margin: 4px 6px; }
+.slide-type-badge { position: absolute; bottom: 1px; left: 3px; font-size: 10px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+.add-slide-btn-big { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(100% - 16px); margin: 6px 8px; padding: 8px; background: linear-gradient(135deg, var(--accent), #6366f1); border: none; border-radius: 8px; color: white; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.add-slide-btn-big:hover { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+.timeline-slide canvas.slide-thumb { width: 100%; height: 100%; border-radius: 4px; }
+
 /* Export Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
 .modal-overlay.active { display: flex; }
@@ -145,9 +158,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
       <span>📸 Photos</span>
       <button class="btn btn-sm btn-secondary" onclick="clearAll()">Clear</button>
     </div>
-    <div style="padding:6px 8px;display:flex;gap:4px">
-      <button class="btn btn-sm btn-secondary" style="flex:1;font-size:10px" onclick="addTextSlide()">＋ Text Slide</button>
-    </div>
+    <button class="add-slide-btn-big" onclick="showAddSlideMenu(this, 'panel')">＋ Add Slide</button>
     <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
       <p style="font-size:20px;margin-bottom:4px">📷</p>
       <p>Drag & drop or <span>browse</span></p>
@@ -309,6 +320,19 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
     </div>
     <button class="timeline-scroll-btn" onclick="document.getElementById('timeline').scrollBy({left:200,behavior:'smooth'})">›</button>
   </div>
+</div>
+
+<!-- Add Slide Menu -->
+<div class="add-slide-menu" id="addSlideMenu">
+  <button class="add-slide-menu-item" onclick="addSlideOfType('photo')"><span class="menu-icon">📷</span><span class="menu-label">Photo Slide</span></button>
+  <button class="add-slide-menu-item" onclick="addSlideOfType('text')"><span class="menu-icon">📝</span><span class="menu-label">Text Slide</span></button>
+  <div class="add-slide-menu-sep"></div>
+  <button class="add-slide-menu-item" onclick="addSlideOfType('cta')"><span class="menu-icon">📞</span><span class="menu-label">Call to Action</span></button>
+  <button class="add-slide-menu-item" onclick="addSlideOfType('quote')"><span class="menu-icon">💬</span><span class="menu-label">Quote</span></button>
+  <button class="add-slide-menu-item" onclick="addSlideOfType('titlecard')"><span class="menu-icon">🎬</span><span class="menu-label">Title Card</span></button>
+  <button class="add-slide-menu-item" onclick="addSlideOfType('hiring')"><span class="menu-icon">👷</span><span class="menu-label">Hiring</span></button>
+  <button class="add-slide-menu-item" onclick="addSlideOfType('promo')"><span class="menu-icon">🎉</span><span class="menu-label">Promo</span></button>
+  <button class="add-slide-menu-item" onclick="addSlideOfType('testimonial')"><span class="menu-icon">⭐</span><span class="menu-label">Testimonial</span></button>
 </div>
 
 <!-- Export Modal -->
@@ -775,22 +799,66 @@ function handleFiles(files) {
 
 function clearAll() { S.photos=[]; S.slides=[]; S.cur=0; particleCaches.clear(); refresh(); }
 
-function addTextSlide() {
-  S.slides.push({
-    pi: -1,
-    dur: parseInt(document.getElementById('slideDuration').value) || 4,
-    trans: document.getElementById('transition').value,
-    hl: document.getElementById('headline').value || 'Your Headline',
-    sub: document.getElementById('subtitle').value || 'Your subtitle text here',
-    bg: document.getElementById('bgType').value || 'dark-grad',
-    effect: 'none',
-    effectIntensity: 0.5,
-    font: 'Inter',
-    customBg1: '#1a0f00',
-    customBg2: '#0a0500'
-  });
-  S.cur = S.slides.length - 1;
+function addTextSlide() { addSlideOfType('text'); }
+
+const SLIDE_TYPES = {
+  photo: { pi: -2, hl: '', sub: '', bg: 'photo', pos: 'bottom', fs: '32', bgo: '60', effect: 'none' },
+  text: { pi: -1, hl: 'Your Headline', sub: 'Your subtitle text here', bg: 'dark-grad', pos: 'center', fs: '44', bgo: '0', effect: 'none' },
+  cta: { pi: -1, hl: 'Call Us Today!', sub: '(555) 123-4567  \u2022  yourbiz.com', bg: 'brand', pos: 'center', fs: '44', bgo: '0', effect: 'none' },
+  quote: { pi: -1, hl: '"Amazing quality and service!"', sub: '\u2014 Happy Customer', bg: 'dark', pos: 'center', fs: '32', bgo: '0', effect: 'none' },
+  titlecard: { pi: -1, hl: 'Welcome to Our Business', sub: 'Your Tagline Goes Here', bg: 'dark-grad', pos: 'center', fs: '44', bgo: '0', effect: 'none' },
+  hiring: { pi: -1, hl: "We're Hiring!", sub: 'Join Our Team Today', bg: 'blue-purple', pos: 'center', fs: '44', bgo: '0', effect: 'none' },
+  promo: { pi: -1, hl: '\ud83d\udd25 Limited Time Offer!', sub: 'Call Now for Details', bg: 'warm-grad', pos: 'center', fs: '44', bgo: '0', effect: 'gold-sparkles' },
+  testimonial: { pi: -1, hl: '\u2b50\u2b50\u2b50\u2b50\u2b50', sub: '"Excellent service! Highly recommended."', bg: 'dark', pos: 'center', fs: '32', bgo: '0', effect: 'none' },
+};
+
+function showAddSlideMenu(anchor, origin) {
+  const menu = document.getElementById('addSlideMenu');
+  if (menu.classList.contains('visible')) { hideAddSlideMenu(); return; }
+  const rect = anchor.getBoundingClientRect();
+  if (origin === 'timeline') {
+    menu.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+    menu.style.top = (rect.top - 10) + 'px';
+    menu.classList.add('visible');
+    const mRect = menu.getBoundingClientRect();
+    menu.style.top = (rect.top - mRect.height - 8) + 'px';
+    if (menu.getBoundingClientRect().top < 0) { menu.style.top = (rect.bottom + 4) + 'px'; }
+  } else {
+    menu.style.left = (rect.right + 4) + 'px';
+    menu.style.top = rect.top + 'px';
+    menu.classList.add('visible');
+    const mRect = menu.getBoundingClientRect();
+    if (mRect.right > window.innerWidth) { menu.style.left = (rect.left - mRect.width - 4) + 'px'; }
+    if (mRect.bottom > window.innerHeight) { menu.style.top = (window.innerHeight - mRect.height - 8) + 'px'; }
+  }
+}
+function hideAddSlideMenu() { document.getElementById('addSlideMenu').classList.remove('visible'); }
+document.addEventListener('click', e => {
+  const menu = document.getElementById('addSlideMenu');
+  if (menu.classList.contains('visible') && !menu.contains(e.target) && !e.target.closest('.add-slide-btn-big') && !e.target.closest('.timeline-add')) {
+    hideAddSlideMenu();
+  }
+});
+
+function addSlideOfType(type) {
+  hideAddSlideMenu();
+  if (type === 'photo') { document.getElementById('fileInput').click(); return; }
+  const t = SLIDE_TYPES[type] || SLIDE_TYPES.text;
+  const insertIdx = S.slides.length > 0 ? S.cur + 1 : 0;
+  const newSlide = {
+    pi: t.pi, dur: 4, trans: 'fade', hl: t.hl, sub: t.sub, bg: t.bg,
+    effect: t.effect, effectIntensity: t.effect !== 'none' ? 0.5 : 0,
+    font: 'Inter', customBg1: '#1a0f00', customBg2: '#0a0500', slideType: type
+  };
+  S.slides.splice(insertIdx, 0, newSlide);
+  const newCaches = new Map();
+  particleCaches.forEach((v, k) => { newCaches.set(k >= insertIdx ? k + 1 : k, v); });
+  particleCaches.clear(); newCaches.forEach((v, k) => particleCaches.set(k, v));
+  S.cur = insertIdx;
   loadSlideUI(S.cur);
+  if (t.pos) document.getElementById('textPosition').value = t.pos;
+  if (t.fs) document.getElementById('fontSize').value = t.fs;
+  if (t.bgo !== undefined) document.getElementById('bgOpacity').value = t.bgo;
   refresh();
 }
 
