@@ -253,17 +253,17 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
     </div>
 
     <div class="settings-section">
-      <h3>📋 + Add Slide</h3>
+      <h3>🎨 Text Templates <span style="font-size:9px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">(applies to current slide)</span></h3>
       <div class="template-grid">
-        <div class="template-card" onclick="pickTemplate('showcase',this)"><div class="template-icon">🔧</div><div class="template-name">+ Showcase</div></div>
-        <div class="template-card" onclick="pickTemplate('beforeafter',this)"><div class="template-icon">🔄</div><div class="template-name">+ Before/After</div></div>
-        <div class="template-card" onclick="pickTemplate('testimonial',this)"><div class="template-icon">⭐</div><div class="template-name">+ Testimonial</div></div>
-        <div class="template-card" onclick="pickTemplate('promo',this)"><div class="template-icon">🎉</div><div class="template-name">+ Promo</div></div>
-        <div class="template-card" onclick="pickTemplate('hiring',this)"><div class="template-icon">👷</div><div class="template-name">+ Hiring</div></div>
-        <div class="template-card" onclick="pickTemplate('portfolio',this)"><div class="template-icon">📁</div><div class="template-name">+ Portfolio</div></div>
-        <div class="template-card" onclick="pickTemplate('titlecard',this)"><div class="template-icon">🎬</div><div class="template-name">+ Title Card</div></div>
-        <div class="template-card" onclick="pickTemplate('cta',this)"><div class="template-icon">📞</div><div class="template-name">+ Call To Action</div></div>
-        <div class="template-card" onclick="pickTemplate('quote',this)"><div class="template-icon">💬</div><div class="template-name">+ Quote</div></div>
+        <div class="template-card" onclick="pickTemplate('showcase',this)"><div class="template-icon">🔧</div><div class="template-name">Showcase</div></div>
+        <div class="template-card" onclick="pickTemplate('beforeafter',this)"><div class="template-icon">🔄</div><div class="template-name">Before/After</div></div>
+        <div class="template-card" onclick="pickTemplate('testimonial',this)"><div class="template-icon">⭐</div><div class="template-name">Testimonial</div></div>
+        <div class="template-card" onclick="pickTemplate('promo',this)"><div class="template-icon">🎉</div><div class="template-name">Promo</div></div>
+        <div class="template-card" onclick="pickTemplate('hiring',this)"><div class="template-icon">👷</div><div class="template-name">Hiring</div></div>
+        <div class="template-card" onclick="pickTemplate('portfolio',this)"><div class="template-icon">📁</div><div class="template-name">Portfolio</div></div>
+        <div class="template-card" onclick="pickTemplate('titlecard',this)"><div class="template-icon">🎬</div><div class="template-name">Title Card</div></div>
+        <div class="template-card" onclick="pickTemplate('cta',this)"><div class="template-icon">📞</div><div class="template-name">Call To Action</div></div>
+        <div class="template-card" onclick="pickTemplate('quote',this)"><div class="template-icon">💬</div><div class="template-name">Quote</div></div>
       </div>
     </div>
 
@@ -1112,26 +1112,40 @@ function setAspect(r,btn) { S.aspect=r; document.querySelectorAll('.aspect-btn')
 function pickTemplate(name,el) {
   document.querySelectorAll('.template-card').forEach(c=>c.classList.remove('active')); el.classList.add('active');
   const t=TEMPLATES[name];
-  // Map template name to slide type for addSlideOfType
   const typeMap = {showcase:'text',beforeafter:'text',testimonial:'testimonial',promo:'promo',hiring:'hiring',portfolio:'text',titlecard:'titlecard',cta:'cta',quote:'quote'};
   const slideType = typeMap[name] || 'text';
-  // Create a new slide with template values
-  const insertIdx = S.slides.length > 0 ? S.cur + 1 : 0;
-  const newSlide = {
-    pi: -1, dur: 4, trans: 'fade', hl: t.hl, sub: t.sub, bg: t.bg || 'dark-grad',
-    effect: 'none', effectIntensity: 0, font: 'Inter',
-    customBg1: '#1a0f00', customBg2: '#0a0500', slideType: slideType
-  };
-  S.slides.splice(insertIdx, 0, newSlide);
-  const newCaches = new Map();
-  particleCaches.forEach((v, k) => { newCaches.set(k >= insertIdx ? k + 1 : k, v); });
-  particleCaches.clear(); newCaches.forEach((v, k) => particleCaches.set(k, v));
-  S.cur = insertIdx;
-  loadSlideUI(S.cur);
-  if(t.pos) document.getElementById('textPosition').value=t.pos;
-  if(t.fs) document.getElementById('fontSize').value=t.fs;
-  if(t.bgo!==undefined) document.getElementById('bgOpacity').value=t.bgo;
-  refresh();
+
+  if (S.slides.length > 0 && S.cur >= 0 && S.cur < S.slides.length) {
+    // Apply template text/style TO the current slide (don't create a new one)
+    const slide = S.slides[S.cur];
+    slide.hl = t.hl;
+    slide.sub = t.sub;
+    // Only change bg if template has a non-photo bg (keep photo backgrounds)
+    if (t.bg && t.bg !== 'photo' && slide.pi < 0) slide.bg = t.bg;
+    slide.slideType = slideType;
+    loadSlideUI(S.cur);
+    if(t.pos) document.getElementById('textPosition').value=t.pos;
+    if(t.fs) document.getElementById('fontSize').value=t.fs;
+    if(t.bgo!==undefined) document.getElementById('bgOpacity').value=t.bgo;
+    // Save the position/font changes back to the slide
+    saveSlideText();
+    drawCurrent();
+    refresh();
+  } else {
+    // No slides yet — create a new one
+    const newSlide = {
+      pi: -1, dur: 4, trans: 'fade', hl: t.hl, sub: t.sub, bg: t.bg || 'dark-grad',
+      effect: 'none', effectIntensity: 0, font: 'Inter',
+      customBg1: '#1a0f00', customBg2: '#0a0500', slideType: slideType
+    };
+    S.slides.push(newSlide);
+    S.cur = 0;
+    loadSlideUI(S.cur);
+    if(t.pos) document.getElementById('textPosition').value=t.pos;
+    if(t.fs) document.getElementById('fontSize').value=t.fs;
+    if(t.bgo!==undefined) document.getElementById('bgOpacity').value=t.bgo;
+    refresh();
+  }
 }
 
 // ===== AUDIO / MUSIC LIBRARY =====
