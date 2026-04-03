@@ -397,13 +397,28 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
       <div class="form-group"><label>Music Track</label>
         <select id="musicSelect" onchange="selectMusic(this.value)" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--bg4);border-radius:5px;color:var(--text);font-family:inherit;font-size:12px">
           <option value="none">No Music</option>
-          <option value="upbeat-pop">🎵 Upbeat Pop (Promo)</option>
-          <option value="warm-corporate">🏢 Warm Corporate</option>
-          <option value="feel-good">😊 Feel Good Energy</option>
-          <option value="chill-lofi">🎧 Chill Lo-Fi</option>
-          <option value="epic-cinematic">🎬 Epic Cinematic</option>
-          <option value="driving-rock">🎸 Driving Rock</option>
-          <option value="happy-acoustic">🎸 Happy Acoustic</option>
+          <optgroup label="🎵 Upbeat & Fun">
+            <option value="upbeat-pop">🎵 Upbeat Pop</option>
+            <option value="feel-good">😊 Feel Good Energy</option>
+            <option value="happy-acoustic">🎸 Happy Acoustic</option>
+            <option value="funky-groove">🕺 Funky Groove</option>
+          </optgroup>
+          <optgroup label="🏢 Business & Professional">
+            <option value="warm-corporate">🏢 Warm Corporate</option>
+            <option value="inspiring">✨ Inspiring & Uplifting</option>
+            <option value="modern-tech">💻 Modern Tech</option>
+          </optgroup>
+          <optgroup label="🎧 Chill & Smooth">
+            <option value="chill-lofi">🎧 Chill Lo-Fi</option>
+            <option value="smooth-jazz">🎷 Smooth Jazz</option>
+            <option value="ambient-dream">🌊 Ambient Dream</option>
+          </optgroup>
+          <optgroup label="🔥 Energetic">
+            <option value="driving-rock">🎸 Driving Rock</option>
+            <option value="epic-cinematic">🎬 Epic Cinematic</option>
+            <option value="edm-energy">⚡ EDM Energy</option>
+            <option value="hip-hop-beat">🎤 Hip Hop Beat</option>
+          </optgroup>
           <option value="custom">📁 Upload Your Own...</option>
         </select>
       </div>
@@ -1293,112 +1308,268 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-// Generate music tracks using Web Audio API
+// ===== MUSIC GENERATOR V2 — Pro Quality =====
 function generateMusicTrack(type) {
   const ctx = getAudioCtx();
   const sr = ctx.sampleRate;
-  const dur = 16; // 16-second loop
+  const dur = 20;
   const frames = sr * dur;
   const buf = ctx.createBuffer(2, frames, sr);
   const L = buf.getChannelData(0);
   const R = buf.getChannelData(1);
 
-  // Musical helpers
-  const noteFreq = (note) => 440 * Math.pow(2, (note - 69) / 12);
-  const sin = (f, t) => Math.sin(2 * Math.PI * f * t);
-  const env = (t, a, d, s, r, dur) => {
+  const PI2 = Math.PI * 2;
+  const noteFreq = n => 440 * Math.pow(2, (n - 69) / 12);
+  const sin = (f, t) => Math.sin(PI2 * f * t);
+  const saw = (f, t) => { const p = (f * t) % 1; return 2 * p - 1; };
+  const tri = (f, t) => { const p = (f * t) % 1; return 4 * Math.abs(p - 0.5) - 1; };
+  const square = (f, t) => sin(f, t) > 0 ? 1 : -1;
+  const noise = () => Math.random() * 2 - 1;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  // ADSR envelope
+  const adsr = (t, a, d, s, r, total) => {
+    if (t < 0) return 0;
     if (t < a) return t / a;
-    if (t < a + d) return 1 - (1 - s) * (t - a) / d;
-    if (t < dur - r) return s;
-    return s * (dur - t) / r;
+    t -= a; if (t < d) return 1 - (1 - s) * (t / d);
+    t -= d; const sus = total - a - d - r;
+    if (t < sus) return s;
+    t -= sus; if (t < r) return s * (1 - t / r);
+    return 0;
   };
 
-  // Chord progressions (MIDI notes)
-  const CHORDS = {
-    'upbeat-pop':     [[60,64,67,72],[65,69,72,77],[67,71,74,79],[60,64,67,72]],
-    'warm-corporate': [[60,64,67,71],[65,69,72,76],[62,65,69,74],[67,71,74,79]],
-    'feel-good':      [[65,69,72,77],[67,71,74,79],[60,64,67,72],[62,65,69,74]],
-    'chill-lofi':     [[60,63,67,70],[58,62,65,70],[56,60,63,68],[58,62,65,70]],
-    'epic-cinematic': [[48,55,60,64],[53,57,60,65],[55,59,62,67],[48,55,60,64]],
-    'driving-rock':   [[48,52,55,60],[53,57,60,65],[50,55,57,62],[48,52,55,60]],
-    'happy-acoustic': [[60,64,67,72],[65,69,72,77],[62,66,69,74],[67,71,74,79]]
-  };
-  const TEMPOS = {
-    'upbeat-pop':120, 'warm-corporate':100, 'feel-good':115,
-    'chill-lofi':75, 'epic-cinematic':80, 'driving-rock':130, 'happy-acoustic':110
+  // Simple 1-pole low-pass filter state
+  let lpState = 0;
+  const lp = (x, cutoff) => { const rc = 1 / (PI2 * cutoff); const a = 1 / (1 + rc * sr); lpState += a * (x - lpState); return lpState; };
+
+  // Simple delay buffer for reverb feel
+  const delayLen = Math.floor(sr * 0.3);
+  const delayBuf = new Float32Array(delayLen);
+  let delayIdx = 0;
+  const delay = (x, feedback, mix) => {
+    const delayed = delayBuf[delayIdx];
+    delayBuf[delayIdx] = x + delayed * feedback;
+    delayIdx = (delayIdx + 1) % delayLen;
+    return x * (1 - mix) + delayed * mix;
   };
 
-  const chords = CHORDS[type] || CHORDS['upbeat-pop'];
-  const bpm = TEMPOS[type] || 110;
-  const beatLen = 60 / bpm;
+  // Presets per genre
+  const P = {
+    'upbeat-pop': {
+      bpm: 120, chords: [[60,64,67],[65,69,72],[67,71,74],[60,64,67]],
+      padWave:'tri', padVol:0.04, padCut:2000, bassVol:0.14, bassOct:-12,
+      kickPat:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], hhVol:0.03,
+      melody:true, melOct:12, melWave:'tri', melVol:0.035,
+      delayFb:0.2, delayMix:0.15, groove:0.02
+    },
+    'feel-good': {
+      bpm: 116, chords: [[65,69,72],[67,71,74],[60,64,67],[62,65,69]],
+      padWave:'tri', padVol:0.045, padCut:2500, bassVol:0.12, bassOct:-12,
+      kickPat:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], hhVol:0.025,
+      melody:true, melOct:12, melWave:'sin', melVol:0.03,
+      delayFb:0.25, delayMix:0.2, groove:0.01
+    },
+    'happy-acoustic': {
+      bpm: 112, chords: [[60,64,67],[65,69,72],[62,66,69],[67,71,74]],
+      padWave:'tri', padVol:0.05, padCut:3500, bassVol:0.1, bassOct:-12,
+      kickPat:[1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], hhVol:0.015,
+      melody:true, melOct:12, melWave:'tri', melVol:0.03,
+      delayFb:0.3, delayMix:0.25, groove:0.015
+    },
+    'funky-groove': {
+      bpm: 105, chords: [[60,63,67],[58,62,65],[60,63,67],[62,65,69]],
+      padWave:'saw', padVol:0.03, padCut:1200, bassVol:0.16, bassOct:-12,
+      kickPat:[1,0,0,1,0,0,1,0,0,0,1,0,1,0,0,0], snarePat:[0,0,0,0,1,0,0,1,0,0,0,0,1,0,0,0],
+      hhPat:[1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1], hhVol:0.03,
+      melody:false, delayFb:0.15, delayMix:0.1, groove:0.03
+    },
+    'warm-corporate': {
+      bpm: 100, chords: [[60,64,67,71],[65,69,72,76],[62,65,69,74],[67,71,74,79]],
+      padWave:'tri', padVol:0.05, padCut:1800, bassVol:0.09, bassOct:-12,
+      kickPat:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], hhVol:0.02,
+      melody:true, melOct:12, melWave:'sin', melVol:0.025,
+      delayFb:0.35, delayMix:0.3, groove:0
+    },
+    'inspiring': {
+      bpm: 95, chords: [[60,64,67],[65,69,72],[67,71,74],[63,67,70]],
+      padWave:'tri', padVol:0.06, padCut:2200, bassVol:0.08, bassOct:-12,
+      kickPat:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], snarePat:[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+      hhPat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hhVol:0,
+      melody:true, melOct:12, melWave:'sin', melVol:0.035,
+      delayFb:0.4, delayMix:0.35, groove:0
+    },
+    'modern-tech': {
+      bpm: 118, chords: [[60,63,67],[58,63,67],[56,60,63],[58,63,67]],
+      padWave:'saw', padVol:0.03, padCut:1000, bassVol:0.15, bassOct:-12,
+      kickPat:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1],
+      hhPat:[1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1], hhVol:0.025,
+      melody:true, melOct:12, melWave:'square', melVol:0.02,
+      delayFb:0.3, delayMix:0.2, groove:0.01
+    },
+    'chill-lofi': {
+      bpm: 78, chords: [[60,63,67,70],[58,62,65,70],[56,60,63,68],[58,62,65,70]],
+      padWave:'tri', padVol:0.05, padCut:1200, bassVol:0.07, bassOct:-12,
+      kickPat:[1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0],
+      hhPat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], hhVol:0.015,
+      melody:false, delayFb:0.35, delayMix:0.3, groove:0.025,
+      vinylCrackle: true
+    },
+    'smooth-jazz': {
+      bpm: 85, chords: [[60,64,67,71],[65,69,72,76],[62,66,69,74],[67,71,74,78]],
+      padWave:'tri', padVol:0.04, padCut:1500, bassVol:0.1, bassOct:-24,
+      kickPat:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], snarePat:[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1], hhVol:0.02,
+      melody:true, melOct:12, melWave:'sin', melVol:0.03,
+      delayFb:0.4, delayMix:0.35, groove:0.02
+    },
+    'ambient-dream': {
+      bpm: 70, chords: [[60,64,67,71],[63,67,70,74],[58,62,65,70],[60,64,67,71]],
+      padWave:'tri', padVol:0.07, padCut:900, bassVol:0.04, bassOct:-12,
+      kickPat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snarePat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      hhPat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hhVol:0,
+      melody:true, melOct:24, melWave:'sin', melVol:0.03,
+      delayFb:0.5, delayMix:0.45, groove:0
+    },
+    'driving-rock': {
+      bpm: 130, chords: [[48,52,55],[53,57,60],[50,55,57],[48,52,55]],
+      padWave:'saw', padVol:0.04, padCut:1800, bassVol:0.18, bassOct:-12,
+      kickPat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], hhVol:0.035,
+      melody:false, delayFb:0.15, delayMix:0.1, groove:0
+    },
+    'epic-cinematic': {
+      bpm: 80, chords: [[48,55,60,64],[53,57,60,65],[55,59,62,67],[48,55,60,64]],
+      padWave:'saw', padVol:0.06, padCut:1400, bassVol:0.12, bassOct:-24,
+      kickPat:[1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], snarePat:[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+      hhPat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hhVol:0,
+      melody:true, melOct:12, melWave:'sin', melVol:0.04,
+      delayFb:0.45, delayMix:0.4, groove:0
+    },
+    'edm-energy': {
+      bpm: 128, chords: [[60,63,67],[58,63,67],[55,60,63],[58,63,67]],
+      padWave:'saw', padVol:0.04, padCut:1500, bassVol:0.18, bassOct:-12,
+      kickPat:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], hhVol:0.03,
+      melody:true, melOct:12, melWave:'square', melVol:0.025,
+      delayFb:0.2, delayMix:0.15, groove:0, sidechainKick:true
+    },
+    'hip-hop-beat': {
+      bpm: 90, chords: [[60,63,67,70],[58,62,65,68],[56,60,63,67],[58,62,65,70]],
+      padWave:'tri', padVol:0.035, padCut:1000, bassVol:0.16, bassOct:-12,
+      kickPat:[1,0,0,0,0,0,1,0,0,1,0,0,0,0,1,0], snarePat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+      hhPat:[1,0,1,1,1,0,1,0,1,0,1,1,1,0,1,0], hhVol:0.025,
+      melody:false, delayFb:0.2, delayMix:0.15, groove:0.03,
+      vinylCrackle: true
+    }
+  };
+
+  const p = P[type] || P['upbeat-pop'];
+  const beatLen = 60 / p.bpm;
   const barLen = beatLen * 4;
+  const step16 = beatLen / 4;
+
+  // Seed random for consistent output per type
+  let rng = type.split('').reduce((a,c) => a + c.charCodeAt(0), 0) * 13;
+  const srand = () => { rng = (rng * 1103515245 + 12345) & 0x7fffffff; return rng / 0x7fffffff; };
+
+  // Pre-generate melody pattern (which chord tone to play per 8th note)
+  const melPat = [];
+  for (let i = 0; i < 32; i++) melPat.push(Math.floor(srand() * 3));
+
+  lpState = 0;
+  delayIdx = 0;
+  delayBuf.fill(0);
 
   for (let i = 0; i < frames; i++) {
     const t = i / sr;
-    const bar = Math.floor(t / barLen) % chords.length;
-    const beatInBar = (t % barLen) / beatLen;
-    const chord = chords[bar];
+    const bar = Math.floor(t / barLen) % p.chords.length;
+    const chord = p.chords[bar];
+    const posInBar = t % barLen;
+    const step = Math.floor(posInBar / step16) % 16;
+    const posInStep = posInBar - step * step16;
     let sample = 0;
 
-    // Pad/synth layer
+    // === PAD LAYER (detuned, filtered) ===
+    const padEnv = adsr(posInBar, 0.4, 0.5, 0.7, 0.3, barLen);
     for (let n = 0; n < chord.length; n++) {
       const f = noteFreq(chord[n]);
-      const padVol = type === 'epic-cinematic' ? 0.08 : 0.05;
-      sample += sin(f, t) * padVol * env(t % barLen, 0.1, 0.3, 0.6, 0.2, barLen);
-      // Add slight detuned layer for warmth
-      sample += sin(f * 1.003, t) * padVol * 0.5 * env(t % barLen, 0.15, 0.3, 0.5, 0.2, barLen);
+      const wave = p.padWave === 'saw' ? saw : p.padWave === 'square' ? square : tri;
+      // Detuned layers for richness
+      sample += wave(f * 0.998, t) * p.padVol * 0.6 * padEnv;
+      sample += wave(f * 1.002, t) * p.padVol * 0.6 * padEnv;
+      sample += sin(f, t) * p.padVol * 0.4 * padEnv;
     }
 
-    // Bass line (root of chord, octave down)
-    const bassFreq = noteFreq(chord[0] - 12);
-    const bassEnv = env(t % beatLen, 0.01, 0.1, 0.4, 0.05, beatLen);
-    if (type === 'driving-rock' || type === 'upbeat-pop') {
-      sample += (sin(bassFreq, t) + 0.3 * sin(bassFreq * 2, t)) * 0.12 * bassEnv;
-    } else {
-      sample += sin(bassFreq, t) * 0.08 * bassEnv;
+    // === BASS ===
+    const bassNote = chord[0] + p.bassOct;
+    const bassF = noteFreq(bassNote);
+    const bassStep = posInBar % beatLen;
+    let bassEnv2 = adsr(bassStep, 0.005, 0.08, 0.5, 0.05, beatLen);
+    // Sub bass (sine) + harmonics (triangle)
+    sample += sin(bassF, t) * p.bassVol * 0.7 * bassEnv2;
+    sample += tri(bassF * 2, t) * p.bassVol * 0.2 * bassEnv2;
+
+    // === DRUMS ===
+    // Kick
+    if (p.kickPat[step] && posInStep < 0.18) {
+      const kT = posInStep;
+      const kFreq = 55 + 100 * Math.exp(-kT * 40);
+      const kEnv = Math.exp(-kT * 18);
+      sample += sin(kFreq, kT) * 0.22 * kEnv;
+      sample += sin(kFreq * 0.5, kT) * 0.1 * kEnv; // sub
+      // Sidechain compression feel for EDM
+      if (p.sidechainKick) bassEnv2 *= clamp(1 - Math.exp(-kT * 15), 0, 1);
+    }
+    // Snare
+    if (p.snarePat[step] && posInStep < 0.12) {
+      const sT = posInStep;
+      const sEnv = Math.exp(-sT * 30);
+      sample += noise() * 0.09 * sEnv; // noise body
+      sample += sin(200, sT) * 0.06 * Math.exp(-sT * 50); // tone
+      sample += noise() * 0.04 * Math.exp(-sT * 60); // snap
+    }
+    // Hi-hat
+    if (p.hhPat[step] && posInStep < 0.03) {
+      const hEnv = Math.exp(-posInStep * (step % 2 === 0 ? 150 : 250));
+      // Band-limited noise (brighter)
+      sample += noise() * p.hhVol * hEnv;
     }
 
-    // Rhythm/percussion layer
-    const beatPos = t % beatLen;
-    const beat16 = Math.floor((t % barLen) / (beatLen / 4)) % 16;
-    // Kick on 1 and 3
-    if (beat16 === 0 || beat16 === 8) {
-      const kickT = beatPos;
-      if (kickT < 0.15) {
-        const kickFreq = 150 * Math.exp(-kickT * 30);
-        sample += sin(kickFreq, kickT) * 0.2 * Math.exp(-kickT * 20);
+    // === MELODY ===
+    if (p.melody) {
+      const melStep8 = Math.floor(posInBar / (beatLen / 2)) % 8;
+      // Only play some 8th notes for a natural feel
+      const shouldPlay = (melStep8 + bar) % 3 !== 2;
+      if (shouldPlay) {
+        const noteIdx = melPat[(bar * 8 + melStep8) % 32] % chord.length;
+        const melF = noteFreq(chord[noteIdx] + (p.melOct || 12));
+        const melT = posInBar % (beatLen / 2);
+        const melEnv = adsr(melT, 0.01, 0.05, 0.3, 0.05, beatLen / 2);
+        const melWave = p.melWave === 'square' ? square : p.melWave === 'tri' ? tri : sin;
+        sample += melWave(melF, t) * (p.melVol || 0.03) * melEnv;
       }
     }
-    // Snare/clap on 2 and 4
-    if (beat16 === 4 || beat16 === 12) {
-      const snareT = beatPos;
-      if (snareT < 0.1) {
-        sample += (Math.random() * 2 - 1) * 0.1 * Math.exp(-snareT * 40);
-      }
-    }
-    // Hi-hat pattern
-    const hhVol = (type === 'chill-lofi') ? 0.02 : 0.04;
-    if (beat16 % 2 === 0 || type === 'driving-rock') {
-      const hhT = t % (beatLen / 4);
-      if (hhT < 0.02) {
-        sample += (Math.random() * 2 - 1) * hhVol * Math.exp(-hhT * 200);
-      }
+
+    // === VINYL CRACKLE (lo-fi / hip-hop) ===
+    if (p.vinylCrackle) {
+      if (srand() < 0.002) sample += (srand() - 0.5) * 0.04;
     }
 
-    // Melody layer (arpeggiate chord notes)
-    if (type !== 'chill-lofi') {
-      const melNoteIdx = Math.floor(beatInBar * 2) % chord.length;
-      const melFreq = noteFreq(chord[melNoteIdx] + 12);
-      const melEnv = env(t % (beatLen / 2), 0.01, 0.05, 0.3, 0.05, beatLen / 2);
-      const melVol = type === 'epic-cinematic' ? 0.04 : 0.03;
-      sample += sin(melFreq, t) * melVol * melEnv;
-    }
+    // === FILTER (warm it up) ===
+    sample = lp(sample, p.padCut || 2000);
 
-    // Soft clamp
-    sample = Math.max(-0.9, Math.min(0.9, sample));
+    // === DELAY/REVERB ===
+    sample = delay(sample, p.delayFb || 0.2, p.delayMix || 0.15);
 
-    // Stereo spread
-    const spread = sin(0.5, t) * 0.1;
+    // Soft clip
+    sample = Math.tanh(sample * 1.2);
+
+    // Stereo width
+    const spread = sin(0.3, t) * 0.08;
     L[i] = sample * (1 + spread);
     R[i] = sample * (1 - spread);
   }
@@ -1428,7 +1599,7 @@ function selectMusic(val) {
       musicBuffer = generateMusicTrack(val);
       S.audio = null; // Clear file-based audio
       S.musicType = val;
-      const names = {'upbeat-pop':'Upbeat Pop','warm-corporate':'Warm Corporate','feel-good':'Feel Good Energy','chill-lofi':'Chill Lo-Fi','epic-cinematic':'Epic Cinematic','driving-rock':'Driving Rock','happy-acoustic':'Happy Acoustic'};
+      const names = {'upbeat-pop':'Upbeat Pop','warm-corporate':'Warm Corporate','feel-good':'Feel Good Energy','chill-lofi':'Chill Lo-Fi','epic-cinematic':'Epic Cinematic','driving-rock':'Driving Rock','happy-acoustic':'Happy Acoustic','funky-groove':'Funky Groove','inspiring':'Inspiring & Uplifting','modern-tech':'Modern Tech','smooth-jazz':'Smooth Jazz','ambient-dream':'Ambient Dream','edm-energy':'EDM Energy','hip-hop-beat':'Hip Hop Beat'};
       document.getElementById('audioStatus').textContent = '🎵 ' + (names[val] || val) + ' (generated)';
     } catch(e) {
       document.getElementById('audioStatus').textContent = '❌ Error generating track';
